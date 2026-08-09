@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "782695805227",
+    "project_id": "dapzo-prod",
+    "storage_bucket": "dapzo-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:782695805227:android:ce3c8b6296262e2469956e",
+        "android_client_info": {
+          "package_name": "com.example.dapzo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_TfkHdDnCyITmMeOmLGLZw91ivTHkzGU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:782695805227:android:8a87a0bc46a008af69956e",
+        "android_client_info": {
+          "package_name": "com.example.dapzoo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_TfkHdDnCyITmMeOmLGLZw91ivTHkzGU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
