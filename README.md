@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dapzo — Customer App
 
 Flutter customer app for local food + meat delivery, built to the Dapzo
@@ -114,3 +115,6 @@ The spec's phases 15–24 (shop/delivery-partner connection, real backend
 notifications sending, favorites write-path, offers admin, hardened
 security rules, testing) are natural follow-ups once this compiles clean
 against your real Firebase project. Happy to build any of those next.
+=======
+# dapzo
+>>>>>>> dd82a37d60ef26cf1f8ff13b8adae343187b562f
