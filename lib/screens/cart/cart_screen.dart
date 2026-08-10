@@ -8,7 +8,9 @@ import 'checkout_screen.dart';
 
 /// Cart screen — deliberately excludes Wallet and Refer & Earn per spec.
 class CartScreen extends StatelessWidget {
-  const CartScreen({super.key});
+  final bool embedded;
+
+  const CartScreen({super.key, this.embedded = false});
 
   @override
   Widget build(BuildContext context) {
@@ -20,101 +22,124 @@ class CartScreen extends StatelessWidget {
     final tax = subtotal * AppConstants.taxRatePercent / 100;
     final total = subtotal + delivery - discount + tax;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Your Cart')),
-      body: cart.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.shopping_cart_outlined, size: 56, color: AppColors.textSecondary),
-                  const SizedBox(height: 12),
-                  Text('Your cart is empty', style: AppTextStyles.supporting),
-                ],
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(16),
+    final body = cart.isEmpty
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ...cart.items.map((item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.network(
-                              item.imageUrl,
-                              width: 56,
-                              height: 56,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 56,
-                                height: 56,
-                                color: AppColors.background,
-                                child: const Icon(Icons.fastfood, color: AppColors.textSecondary),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.selectedWeight != null
-                                      ? '${item.name} · ${item.selectedWeight}'
-                                      : item.name,
-                                  style: AppTextStyles.productName,
-                                ),
-                                const SizedBox(height: 2),
-                                Text('₹${item.unitPrice.toStringAsFixed(0)}', style: AppTextStyles.supporting),
-                              ],
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              _QtyBtn(
-                                icon: Icons.remove,
-                                onTap: () => context.read<CartService>().decrementQty(item.lineKey),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
-                                child: Text('${item.quantity}', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-                              ),
-                              _QtyBtn(
-                                icon: Icons.add,
-                                onTap: () => context.read<CartService>().incrementQty(item.lineKey),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    )),
-                const Divider(height: 32),
-                _SummaryRow('Subtotal', subtotal),
-                _SummaryRow('Delivery', delivery),
-                _SummaryRow('Discount', -discount),
-                _SummaryRow('Tax', tax),
-                const Divider(height: 24),
-                _SummaryRow('Total', total, bold: true),
+                const Icon(Icons.shopping_cart_outlined, size: 56, color: AppColors.textSecondary),
+                const SizedBox(height: 12),
+                Text('Your cart is empty', style: AppTextStyles.supporting),
               ],
             ),
-      bottomNavigationBar: cart.isEmpty
-          ? null
-          : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const CheckoutScreen()),
+          )
+        : ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              ...cart.items.map((item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            item.imageUrl,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 56,
+                              height: 56,
+                              color: AppColors.background,
+                              child: const Icon(Icons.fastfood, color: AppColors.textSecondary),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.selectedWeight != null
+                                    ? '${item.name} · ${item.selectedWeight}'
+                                    : item.name,
+                                style: AppTextStyles.productName,
+                              ),
+                              const SizedBox(height: 2),
+                              Text('₹${item.unitPrice.toStringAsFixed(0)}', style: AppTextStyles.supporting),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            _QtyBtn(
+                              icon: Icons.remove,
+                              onTap: () => context.read<CartService>().decrementQty(item.lineKey),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: Text('${item.quantity}', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
+                            ),
+                            _QtyBtn(
+                              icon: Icons.add,
+                              onTap: () => context.read<CartService>().incrementQty(item.lineKey),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    child: const Text('Proceed to Checkout'),
+                  )),
+              const Divider(height: 32),
+              _SummaryRow('Subtotal', subtotal),
+              _SummaryRow('Delivery', delivery),
+              _SummaryRow('Discount', -discount),
+              _SummaryRow('Tax', tax),
+              const Divider(height: 24),
+              _SummaryRow('Total', total, bold: true),
+            ],
+          );
+
+    final bottomBar = cart.isEmpty
+        ? null
+        : SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CheckoutScreen()),
                   ),
+                  child: const Text('Proceed to Checkout'),
                 ),
               ),
             ),
+          );
+
+    if (embedded) {
+      // No AppBar/Scaffold when shown as a bottom-nav tab; parent Scaffold handles it.
+      return SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Your Cart', style: AppTextStyles.sectionHeading.copyWith(fontSize: 20)),
+              ),
+            ),
+            Expanded(child: body),
+            if (bottomBar != null) bottomBar,
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Your Cart')),
+      body: body,
+      bottomNavigationBar: bottomBar,
     );
   }
 }

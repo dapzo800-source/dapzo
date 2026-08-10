@@ -15,6 +15,7 @@ import '../product/product_detail_screen.dart';
 import '../location/select_location_screen.dart';
 import '../orders/orders_screen.dart';
 import '../profile/profile_screen.dart';
+import '../cart/cart_screen.dart';
 import 'category_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,8 +30,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cartCount = context.watch<CartService>().itemCount;
+
     final pages = [
       const _HomeTab(),
+      const CartScreen(embedded: true),
       const OrdersScreen(embedded: true),
       const ProfileScreen(embedded: true),
     ];
@@ -42,23 +46,29 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _navIndex,
+        type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() {
             _navIndex = index;
           });
         },
-        items: const [
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
             label: 'Home',
           ),
           BottomNavigationBarItem(
+            icon: _CartIcon(count: cartCount, filled: false),
+            activeIcon: _CartIcon(count: cartCount, filled: true),
+            label: 'Cart',
+          ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.receipt_long_outlined),
             activeIcon: Icon(Icons.receipt_long),
             label: 'Orders',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
             label: 'Profile',
@@ -70,16 +80,51 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // ============================================================================
+// CART ICON WITH BADGE
+// ============================================================================
+
+class _CartIcon extends StatelessWidget {
+  final int count;
+  final bool filled;
+
+  const _CartIcon({required this.count, required this.filled});
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(filled ? Icons.shopping_cart : Icons.shopping_cart_outlined);
+
+    if (count <= 0) return icon;
+
+    return Badge(
+      label: Text('$count'),
+      child: icon,
+    );
+  }
+}
+
+// ============================================================================
 // HOME TAB
 // ============================================================================
 
-class _HomeTab extends StatelessWidget {
+class _HomeTab extends StatefulWidget {
   const _HomeTab();
+
+  @override
+  State<_HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<_HomeTab> {
+  late final ProductService _productService;
+
+  @override
+  void initState() {
+    super.initState();
+    _productService = ProductService();
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final productService = ProductService();
 
     return SafeArea(
       child: CustomScrollView(
@@ -87,7 +132,6 @@ class _HomeTab extends StatelessWidget {
           // ==================================================================
           // LOCATION + SEARCH
           // ==================================================================
-
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -105,45 +149,26 @@ class _HomeTab extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.location_on,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
+                        const Icon(Icons.location_on, color: AppColors.primary, size: 20),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             appState.selectedAddress != null
-                                ? '${appState.selectedAddress!.label} · '
-                                    '${appState.selectedAddress!.area}'
+                                ? '${appState.selectedAddress!.label} · ${appState.selectedAddress!.area}'
                                 : 'Select delivery location',
-                            style: AppTextStyles.body.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: AppColors.textSecondary,
-                        ),
+                        const Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 14),
-
-                  Text(
-                    'What are you craving?',
-                    style: AppTextStyles.sectionHeading,
-                  ),
-
+                  Text('What are you craving?', style: AppTextStyles.sectionHeading),
                   const SizedBox(height: 10),
-
-                  const DapzoSearchBar(
-                    readOnly: false,
-                  ),
+                  const DapzoSearchBar(readOnly: false),
                 ],
               ),
             ),
@@ -152,13 +177,9 @@ class _HomeTab extends StatelessWidget {
           // ==================================================================
           // FOOD / MEAT MODE
           // ==================================================================
-
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
                   Expanded(
@@ -167,23 +188,17 @@ class _HomeTab extends StatelessWidget {
                       icon: Icons.ramen_dining,
                       color: AppColors.foodOrange,
                       selected: appState.mode == 'food',
-                      onTap: () {
-                        appState.setMode('food');
-                      },
+                      onTap: () => appState.setMode('food'),
                     ),
                   ),
-
                   const SizedBox(width: 10),
-
                   Expanded(
                     child: _ModeButton(
                       label: 'Meat',
                       icon: Icons.set_meal,
                       color: AppColors.meatRed,
                       selected: appState.mode == 'meat',
-                      onTap: () {
-                        appState.setMode('meat');
-                      },
+                      onTap: () => appState.setMode('meat'),
                     ),
                   ),
                 ],
@@ -194,33 +209,20 @@ class _HomeTab extends StatelessWidget {
           // ==================================================================
           // OFFERS
           // ==================================================================
-
           SliverToBoxAdapter(
-            child: _OffersBanner(
-              mode: appState.mode,
-            ),
+            child: _OffersBanner(mode: appState.mode, productService: _productService),
           ),
 
           // ==================================================================
           // CATEGORIES HEADER
           // ==================================================================
-
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                8,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Categories',
-                    style: AppTextStyles.sectionHeading,
-                  ),
-
+                  Text('Categories', style: AppTextStyles.sectionHeading),
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).push(
@@ -243,90 +245,49 @@ class _HomeTab extends StatelessWidget {
           // ==================================================================
           // CATEGORIES
           // ==================================================================
-
           SliverToBoxAdapter(
-            child: _CategoryRow(
-              mode: appState.mode,
-              productService: productService,
-            ),
+            child: _CategoryRow(mode: appState.mode, productService: _productService),
           ),
 
           // ==================================================================
           // POPULAR NEAR YOU HEADER
           // ==================================================================
-
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                8,
-              ),
-              child: Text(
-                'Popular Near You',
-                style: AppTextStyles.sectionHeading,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Popular Near You', style: AppTextStyles.sectionHeading),
             ),
           ),
 
           // ==================================================================
           // POPULAR PRODUCTS
           // ==================================================================
-
           SliverPadding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: StreamBuilder<List<ProductModel>>(
-              stream: productService.streamProducts(
-                mode: appState.mode,
-              ),
+              stream: _productService.streamProducts(mode: appState.mode),
               builder: (context, snapshot) {
-                // ------------------------------------------------------------
-                // ERROR
-                // ------------------------------------------------------------
-
                 if (snapshot.hasError) {
-                  debugPrint(
-                    '======================================',
-                  );
-                  debugPrint(
-                    'POPULAR PRODUCTS ERROR',
-                  );
-                  debugPrint(
-                    snapshot.error.toString(),
-                  );
-                  debugPrint(
-                    '======================================',
-                  );
+                  debugPrint('======================================');
+                  debugPrint('POPULAR PRODUCTS ERROR');
+                  debugPrint(snapshot.error.toString());
+                  debugPrint('======================================');
 
                   return SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 40,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 40,
-                              color: AppColors.textSecondary,
-                            ),
-
+                            const Icon(Icons.error_outline, size: 40, color: AppColors.textSecondary),
                             const SizedBox(height: 12),
-
                             Text(
                               'Unable to load products',
                               textAlign: TextAlign.center,
                               style: AppTextStyles.sectionHeading,
                             ),
-
                             const SizedBox(height: 8),
-
                             Text(
                               snapshot.error.toString(),
                               textAlign: TextAlign.center,
@@ -339,57 +300,30 @@ class _HomeTab extends StatelessWidget {
                   );
                 }
 
-                // ------------------------------------------------------------
-                // LOADING
-                // ------------------------------------------------------------
-
-                if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 40,
-                      ),
-                      child: Center(
-                        child: CircularProgressIndicator(),
-                      ),
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: Center(child: CircularProgressIndicator()),
                     ),
                   );
                 }
 
-                // ------------------------------------------------------------
-                // DATA
-                // ------------------------------------------------------------
-
                 final products = snapshot.data ?? [];
-
-                // ------------------------------------------------------------
-                // EMPTY
-                // ------------------------------------------------------------
 
                 if (products.isEmpty) {
                   return SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 40,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 40),
                       child: Center(
-                        child: Text(
-                          'No products available yet',
-                          style: AppTextStyles.supporting,
-                        ),
+                        child: Text('No products available yet', style: AppTextStyles.supporting),
                       ),
                     ),
                   );
                 }
 
-                // ------------------------------------------------------------
-                // PRODUCT GRID
-                // ------------------------------------------------------------
-
                 return SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
@@ -401,42 +335,20 @@ class _HomeTab extends StatelessWidget {
 
                       return ProductCard(
                         product: product,
-
-                        // ----------------------------------------------------
-                        // PRODUCT DETAIL
-                        // ----------------------------------------------------
-
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  ProductDetailScreen(
-                                productId: product.id,
-                              ),
+                              builder: (_) => ProductDetailScreen(productId: product.id),
                             ),
                           );
                         },
-
-                        // ----------------------------------------------------
-                        // ADD TO CART
-                        // ----------------------------------------------------
-
                         onAdd: () {
-                          context
-                              .read<CartService>()
-                              .addItem(
-                                CartItemModel.fromProduct(
-                                  product,
-                                ),
+                          context.read<CartService>().addItem(
+                                CartItemModel.fromProduct(product),
                               );
 
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '${product.name} added to cart',
-                              ),
-                            ),
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('${product.name} added to cart')),
                           );
                         },
                       );
@@ -451,12 +363,7 @@ class _HomeTab extends StatelessWidget {
           // ==================================================================
           // BOTTOM SPACE
           // ==================================================================
-
-          const SliverToBoxAdapter(
-            child: SizedBox(
-              height: 24,
-            ),
-          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
     );
@@ -488,42 +395,25 @@ class _ModeButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: 14,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: selected
-              ? color.withOpacity(0.1)
-              : AppColors.white,
+          color: selected ? color.withOpacity(0.1) : AppColors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected
-                ? color
-                : AppColors.divider,
+            color: selected ? color : AppColors.divider,
             width: selected ? 1.5 : 1,
           ),
         ),
         child: Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: selected
-                  ? color
-                  : AppColors.textSecondary,
-              size: 20,
-            ),
-
+            Icon(icon, color: selected ? color : AppColors.textSecondary, size: 20),
             const SizedBox(width: 8),
-
             Text(
               label,
               style: AppTextStyles.body.copyWith(
                 fontWeight: FontWeight.w600,
-                color: selected
-                    ? color
-                    : AppColors.textDark,
+                color: selected ? color : AppColors.textDark,
               ),
             ),
           ],
@@ -539,37 +429,22 @@ class _ModeButton extends StatelessWidget {
 
 class _OffersBanner extends StatelessWidget {
   final String mode;
+  final ProductService productService;
 
-  const _OffersBanner({
-    required this.mode,
-  });
+  const _OffersBanner({required this.mode, required this.productService});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: ProductService().streamOffers(mode),
+      stream: productService.streamOffers(mode),
       builder: (context, snapshot) {
-        // ------------------------------------------------------------
-        // ERROR
-        // ------------------------------------------------------------
-
         if (snapshot.hasError) {
-          debugPrint(
-            'OFFERS ERROR: ${snapshot.error}',
-          );
-
+          debugPrint('OFFERS ERROR: ${snapshot.error}');
           return const SizedBox.shrink();
         }
 
-        // ------------------------------------------------------------
-        // LOADING
-        // ------------------------------------------------------------
-
-        if (snapshot.connectionState ==
-            ConnectionState.waiting) {
-          return const SizedBox(
-            height: 20,
-          );
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(height: 20);
         }
 
         final offers = snapshot.data ?? [];
@@ -581,49 +456,30 @@ class _OffersBanner extends StatelessWidget {
         return SizedBox(
           height: 120,
           child: ListView.separated(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
             itemCount: offers.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(width: 12),
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final offer = offers[index];
 
               return Container(
                 width: 280,
                 decoration: BoxDecoration(
-                  color: AppColors
-                      .modeColor(mode)
-                      .withOpacity(0.12),
-                  borderRadius:
-                      BorderRadius.circular(14),
+                  color: AppColors.modeColor(mode).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 padding: const EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      offer['title'] ??
-                          'Dapzo Offer',
-                      style: AppTextStyles
-                          .sectionHeading
-                          .copyWith(
-                        fontSize: 16,
-                      ),
+                      offer['title'] ?? 'Dapzo Offer',
+                      style: AppTextStyles.sectionHeading.copyWith(fontSize: 16),
                     ),
-
                     const SizedBox(height: 6),
-
-                    Text(
-                      offer['subtitle'] ?? '',
-                      style:
-                          AppTextStyles.supporting,
-                    ),
+                    Text(offer['subtitle'] ?? '', style: AppTextStyles.supporting),
                   ],
                 ),
               );
@@ -643,48 +499,26 @@ class _CategoryRow extends StatelessWidget {
   final String mode;
   final ProductService productService;
 
-  const _CategoryRow({
-    required this.mode,
-    required this.productService,
-  });
+  const _CategoryRow({required this.mode, required this.productService});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 110,
-      child: StreamBuilder<
-          List<Map<String, dynamic>>>(
-        stream: productService.streamCategories(
-          mode,
-        ),
+      child: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: productService.streamCategories(mode),
         builder: (context, snapshot) {
-          // ----------------------------------------------------------
-          // ERROR
-          // ----------------------------------------------------------
-
           if (snapshot.hasError) {
-            debugPrint(
-              '======================================',
-            );
-            debugPrint(
-              'CATEGORIES ERROR',
-            );
-            debugPrint(
-              snapshot.error.toString(),
-            );
-            debugPrint(
-              '======================================',
-            );
+            debugPrint('======================================');
+            debugPrint('CATEGORIES ERROR');
+            debugPrint(snapshot.error.toString());
+            debugPrint('======================================');
 
             return Center(
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 16,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  'Unable to load categories\n\n'
-                  '${snapshot.error}',
+                  'Unable to load categories\n\n${snapshot.error}',
                   textAlign: TextAlign.center,
                   style: AppTextStyles.supporting,
                 ),
@@ -692,134 +526,67 @@ class _CategoryRow extends StatelessWidget {
             );
           }
 
-          // ----------------------------------------------------------
-          // LOADING
-          // ----------------------------------------------------------
-
-          if (snapshot.connectionState ==
-              ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: SizedBox(
                 height: 24,
                 width: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
             );
           }
 
-          // ----------------------------------------------------------
-          // DATA
-          // ----------------------------------------------------------
-
-          final categories =
-              snapshot.data ?? [];
-
-          // ----------------------------------------------------------
-          // EMPTY
-          // ----------------------------------------------------------
+          final categories = snapshot.data ?? [];
 
           if (categories.isEmpty) {
-            return Center(
-              child: Text(
-                'No categories yet',
-                style:
-                    AppTextStyles.supporting,
-              ),
-            );
+            return Center(child: Text('No categories yet', style: AppTextStyles.supporting));
           }
 
-          // ----------------------------------------------------------
-          // CATEGORY LIST
-          // ----------------------------------------------------------
-
           return ListView.separated(
-            padding:
-                const EdgeInsets.symmetric(
-              horizontal: 16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
             itemCount: categories.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(width: 16),
+            separatorBuilder: (_, __) => const SizedBox(width: 16),
             itemBuilder: (context, index) {
-              final category =
-                  categories[index];
-
-              final categoryId =
-                  category['id']?.toString() ?? '';
-
-              final categoryName =
-                  category['name']?.toString() ?? '';
-
-              final imageUrl =
-                  category['imageUrl']
-                          ?.toString() ??
-                      '';
+              final category = categories[index];
+              final categoryId = category['id']?.toString() ?? '';
+              final categoryName = category['name']?.toString() ?? '';
+              final imageUrl = category['imageUrl']?.toString() ?? '';
 
               return InkWell(
                 onTap: categoryId.isEmpty
                     ? null
                     : () {
-                        Navigator.of(context)
-                            .push(
+                        Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) =>
-                                CategoryScreen(
+                            builder: (_) => CategoryScreen(
                               mode: mode,
-                              categoryId:
-                                  categoryId,
-                              categoryName:
-                                  categoryName,
+                              categoryId: categoryId,
+                              categoryName: categoryName,
                             ),
                           ),
                         );
                       },
-                borderRadius:
-                    BorderRadius.circular(40),
+                borderRadius: BorderRadius.circular(40),
                 child: SizedBox(
                   width: 70,
                   child: Column(
                     children: [
-                      // ------------------------------------------------
-                      // CATEGORY IMAGE
-                      // ------------------------------------------------
-
                       CircleAvatar(
                         radius: 28,
-                        backgroundColor:
-                            AppColors.background,
-                        backgroundImage:
-                            imageUrl.isNotEmpty
-                                ? NetworkImage(
-                                    imageUrl,
-                                  )
-                                : null,
-                        child:
-                            imageUrl.isEmpty
-                                ? const Icon(
-                                    Icons.fastfood,
-                                    color: AppColors
-                                        .textSecondary,
-                                  )
-                                : null,
+                        backgroundColor: AppColors.background,
+                        backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+                        child: imageUrl.isEmpty
+                            ? const Icon(Icons.fastfood, color: AppColors.textSecondary)
+                            : null,
                       ),
-
                       const SizedBox(height: 6),
-
-                      // ------------------------------------------------
-                      // CATEGORY NAME
-                      // ------------------------------------------------
-
                       Text(
                         categoryName,
                         maxLines: 1,
-                        overflow:
-                            TextOverflow.ellipsis,
+                        overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style:
-                            AppTextStyles.caption,
+                        style: AppTextStyles.caption,
                       ),
                     ],
                   ),
