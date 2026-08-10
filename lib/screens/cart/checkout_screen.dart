@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../models/cart_item_model.dart';
 import '../../services/cart_service.dart';
 import '../../services/order_service.dart';
 import '../../services/payment_service.dart';
@@ -53,6 +54,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _placeOrder(double total) async {
     final appState = context.read<AppState>();
     final cart = context.read<CartService>();
+
+    if (cart.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your cart is empty')),
+      );
+      return;
+    }
 
     if (appState.selectedAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -123,6 +131,30 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // --- THE FIX: the cart's items were never rendered anywhere on
+          // this screen before, which is why checkout looked blank. ---
+          if (cart.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 60),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.shopping_cart_outlined, size: 48, color: AppColors.textSecondary),
+                    const SizedBox(height: 12),
+                    Text('Your cart is empty',
+                        style: AppTextStyles.body.copyWith(color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            Text('Order Items (${cart.itemCount})',
+                style: AppTextStyles.sectionHeading.copyWith(fontSize: 15)),
+            const SizedBox(height: 8),
+            for (final item in cart.items) _buildItemTile(item, cart),
+            const SizedBox(height: 22),
+          ],
+
           Text('Delivery Address', style: AppTextStyles.sectionHeading.copyWith(fontSize: 15)),
           const SizedBox(height: 8),
           InkWell(
@@ -167,6 +199,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               const SizedBox(width: 10),
               OutlinedButton(
                 onPressed: () => _applyCoupon(subtotal),
+                // The app theme's OutlinedButtonThemeData likely sets
+                // `minimumSize: Size.fromHeight(...)`, which means
+                // Size(double.infinity, height) — fine for a full-width
+                // button alone in a SizedBox, but it crashes any button
+                // placed as a bare sibling in a Row (like this one, next to
+                // Expanded(TextField)), because Row can't give a non-flex
+                // child infinite width. Overriding minimumSize here with a
+                // finite size fixes it without touching the global theme.
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(64, 48),
+                ),
                 child: const Text('Apply'),
               ),
             ],
@@ -215,7 +258,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _placing ? null : () => _placeOrder(total),
+              onPressed: (_placing || cart.isEmpty) ? null : () => _placeOrder(total),
               child: _placing
                   ? const SizedBox(
                       height: 20,
@@ -228,6 +271,41 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       ),
     );
+  }
+
+  /// Builds a single cart item's tile defensively — if something about that
+  /// item's data causes a build error (e.g. an unexpectedly-null field from
+  /// older persisted cart data), this catches it and shows a plain
+  /// text-only fallback row instead of taking down the whole checkout page.
+  /// The real error is printed to the console so it can be tracked down.
+  Widget _buildItemTile(CartItemModel item, CartService cart) {
+    try {
+      return _CheckoutItemTile(item: item, cart: cart);
+    } catch (e, st) {
+      debugPrint('CHECKOUT ITEM BUILD ERROR for productId=${item.productId}: $e');
+      debugPrint('$st');
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          border: Border.all(color: AppColors.divider),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                item.name.isNotEmpty ? item.name : 'Item',
+                style: AppTextStyles.body,
+              ),
+            ),
+            Text('x${item.quantity}', style: AppTextStyles.caption),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _row(String label, double value, {bool bold = false}) {
@@ -243,6 +321,82 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Text('${value < 0 ? '-' : ''}₹${value.abs().toStringAsFixed(0)}', style: style),
         ],
       ),
+    );
+  }
+}
+
+/// Renders a single cart line on the checkout screen — this whole tile was
+/// missing before, which is why the cart's contents never appeared.
+class _CheckoutItemTile extends StatelessWidget {
+  final CartItemModel item;
+  final CartService cart;
+
+  const _CheckoutItemTile({required this.item, required this.cart});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: item.imageUrl.isEmpty
+                ? _fallbackThumb()
+                : Image.network(
+                    item.imageUrl,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _fallbackThumb(),
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.name, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
+                if (item.selectedWeight != null)
+                  Text(item.selectedWeight!, style: AppTextStyles.caption),
+                Text('₹${item.unitPrice.toStringAsFixed(0)}', style: AppTextStyles.caption),
+              ],
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                onTap: () => cart.decrementQty(item.lineKey),
+                child: const Icon(Icons.remove_circle_outline, size: 20, color: AppColors.textSecondary),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text('${item.quantity}', style: AppTextStyles.body),
+              ),
+              InkWell(
+                onTap: () => cart.incrementQty(item.lineKey),
+                child: const Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fallbackThumb() {
+    return Container(
+      width: 48,
+      height: 48,
+      color: AppColors.divider,
+      child: const Icon(Icons.fastfood_outlined, size: 20, color: AppColors.textSecondary),
     );
   }
 }
