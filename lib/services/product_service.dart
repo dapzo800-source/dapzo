@@ -24,7 +24,7 @@ class ProductService {
   ///   Optional shop document ID.
   Stream<List<ProductModel>> streamProducts({
     required String mode,
-    String? categoryId,
+    String? category,
     String? shopId,
     int limit = 30,
   }) {
@@ -47,10 +47,10 @@ class ProductService {
     // CATEGORY FILTER
     // ------------------------------------------------------------
 
-    if (categoryId != null && categoryId.isNotEmpty) {
+    if (category != null && category.isNotEmpty) {
       query = query.where(
-        'categoryId',
-        isEqualTo: categoryId,
+        'category',
+        isEqualTo: category,
       );
     }
 

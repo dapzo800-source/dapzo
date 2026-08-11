@@ -4,12 +4,15 @@ import '../../theme/app_text_styles.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../utils/validators.dart';
-import '../home/home_screen.dart';
+import '../../state/app_state.dart';
+import 'package:provider/provider.dart';
+import 'mode_selection_screen.dart';
 
 /// Collects Name / Email / Date of Birth for a brand-new user.
 /// Phone number is NOT re-asked here — it already comes from Firebase Auth.
 class ProfileSetupScreen extends StatefulWidget {
-  const ProfileSetupScreen({super.key});
+  final bool isEditing;
+  const ProfileSetupScreen({super.key, this.isEditing = false});
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
@@ -23,6 +26,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   bool _loading = false;
 
   final _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isEditing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final user = context.read<AppState>().user;
+        if (user != null) {
+          _nameController.text = user.name;
+          _emailController.text = user.email;
+          _dob = user.dateOfBirth;
+          setState(() {});
+        }
+      });
+    }
+  }
 
   Future<void> _pickDob() async {
     final now = DateTime.now();
@@ -58,10 +77,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     await _authService.createUserProfile(profile);
 
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-      (route) => false,
-    );
+    if (widget.isEditing) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const ModeSelectionScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -75,9 +98,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Complete Your Profile', style: AppTextStyles.heading),
+                Text(widget.isEditing ? 'Edit Profile' : 'Complete Your Profile', style: AppTextStyles.heading),
                 const SizedBox(height: 8),
-                Text("Let's get your Dapzo account ready.", style: AppTextStyles.supporting),
+                Text(widget.isEditing ? 'Update your Dapzo account details.' : "Let's get your Dapzo account ready.", style: AppTextStyles.supporting),
                 const SizedBox(height: 28),
                 Text('Full Name', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500)),
                 const SizedBox(height: 8),
@@ -121,7 +144,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text('Continue'),
+                        : Text(widget.isEditing ? 'Save Changes' : 'Continue'),
                   ),
                 ),
               ],

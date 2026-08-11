@@ -6,7 +6,7 @@ import 'package:pin_code_fields/pin_code_fields.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../services/auth_service.dart';
-import '../home/home_screen.dart';
+import 'mode_selection_screen.dart';
 import 'profile_setup_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
@@ -124,7 +124,7 @@ class _OtpVerificationScreenState
 
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (_) => const HomeScreen(),
+            builder: (_) => const ModeSelectionScreen(),
           ),
           (route) => false,
         );
@@ -209,123 +209,114 @@ class _OtpVerificationScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Verify OTP'),
+        title: const Text('Verify OTP', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-
-            children: [
-              const SizedBox(height: 16),
-
-              Text(
-                'Enter verification code',
-                style: AppTextStyles.sectionHeading,
-              ),
-
-              const SizedBox(height: 8),
-
-              Text(
-                'Sent to ${widget.phoneNumber}',
-                style: AppTextStyles.supporting,
-              ),
-
-              const SizedBox(height: 28),
-
-              PinCodeTextField(
-                appContext: context,
-
-                length: 6,
-
-                keyboardType: TextInputType.number,
-
-                animationType: AnimationType.fade,
-
-                onChanged: (value) {
-                  setState(() {
-                    _otp = value;
-                    _error = null;
-                  });
-                },
-
-                onCompleted: (value) {
-                  setState(() {
-                    _otp = value;
-                  });
-                },
-
-                pinTheme: PinTheme(
-                  shape: PinCodeFieldShape.box,
-
-                  borderRadius:
-                      BorderRadius.circular(10),
-
-                  fieldHeight: 48,
-
-                  fieldWidth: 44,
-
-                  activeColor:
-                      AppColors.primary,
-
-                  selectedColor:
-                      AppColors.primary,
-
-                  inactiveColor:
-                      AppColors.divider,
-
-                  activeFillColor:
-                      AppColors.white,
-
-                  selectedFillColor:
-                      AppColors.white,
-
-                  inactiveFillColor:
-                      AppColors.white,
-                ),
-              ),
-
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-
-                Text(
-                  _error!,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.error,
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 24),
-
-              SizedBox(
-                width: double.infinity,
-
-                child: ElevatedButton(
-                  onPressed:
-                      _loading ? null : _verify,
-
-                  child: _loading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-
-                          child:
-                              CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.white,
-                          ),
-                        )
-                      : const Text('Verify'),
-                ),
-              ),
-            ],
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/login_bg.png',
+              fit: BoxFit.cover,
+            ),
           ),
-        ),
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.7),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  Text(
+                    'Enter verification code',
+                    style: AppTextStyles.sectionHeading.copyWith(color: AppColors.white),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sent to ${widget.phoneNumber}',
+                    style: AppTextStyles.supporting.copyWith(color: AppColors.white.withOpacity(0.8)),
+                  ),
+                  const SizedBox(height: 28),
+                  PinCodeTextField(
+                    appContext: context,
+                    backgroundColor: Colors.transparent,
+                    cursorColor: Colors.white,
+                    length: 6,
+                    keyboardType: TextInputType.number,
+                    animationType: AnimationType.fade,
+                    textStyle: AppTextStyles.heading.copyWith(color: AppColors.white),
+                    onChanged: (value) {
+                      setState(() {
+                        _otp = value;
+                        _error = null;
+                      });
+                    },
+                    onCompleted: (value) {
+                      setState(() {
+                        _otp = value;
+                      });
+                    },
+                    enableActiveFill: true,
+                    pinTheme: PinTheme(
+                      shape: PinCodeFieldShape.box,
+                      borderRadius: BorderRadius.circular(10),
+                      fieldHeight: 48,
+                      fieldWidth: 44,
+                      activeColor: AppColors.primary,
+                      selectedColor: AppColors.primary,
+                      inactiveColor: AppColors.white.withOpacity(0.3),
+                      activeFillColor: Colors.black.withOpacity(0.4),
+                      selectedFillColor: Colors.black.withOpacity(0.4),
+                      inactiveFillColor: Colors.black.withOpacity(0.4),
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _error!,
+                      style: AppTextStyles.caption.copyWith(color: AppColors.error),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _verify,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _loading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.white,
+                              ),
+                            )
+                          : Text('Verify', style: AppTextStyles.body.copyWith(color: AppColors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

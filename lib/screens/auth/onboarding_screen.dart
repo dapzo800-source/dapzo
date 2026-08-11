@@ -32,13 +32,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       AppColors.foodOrange,
     ),
     _OnboardData(
-      Icons.set_meal_outlined,
+      Icons.kebab_dining,
       'Fresh Meat\nAt Your Door',
       'Choose quality meat from nearby stores.',
       AppColors.meatRed,
     ),
     _OnboardData(
-      Icons.local_shipping_outlined,
+      Icons.delivery_dining,
       'Easy Ordering',
       'Order, pay and track everything from Dapzo.',
       AppColors.primary,
@@ -67,7 +67,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final isLast = _index == _pages.length - 1;
 
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.primary,
       body: SafeArea(
         child: Column(
           children: [
@@ -77,7 +77,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: TextButton(
                   onPressed: _goToLogin,
-                  child: Text('Skip', style: AppTextStyles.body),
+                  child: Text('Skip', style: AppTextStyles.body.copyWith(color: AppColors.white)),
                 ),
               ),
             ),
@@ -96,8 +96,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Container(
                           width: 140,
                           height: 140,
-                          decoration: BoxDecoration(
-                            color: page.accent.withOpacity(0.1),
+                          decoration: const BoxDecoration(
+                            color: AppColors.white,
                             shape: BoxShape.circle,
                           ),
                           child: Icon(page.icon, size: 64, color: page.accent),
@@ -106,13 +106,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Text(
                           page.title,
                           textAlign: TextAlign.center,
-                          style: AppTextStyles.heading,
+                          style: AppTextStyles.heading.copyWith(color: AppColors.white),
                         ),
                         const SizedBox(height: 12),
                         Text(
                           page.subtitle,
                           textAlign: TextAlign.center,
-                          style: AppTextStyles.supporting.copyWith(fontSize: 14),
+                          style: AppTextStyles.supporting.copyWith(fontSize: 14, color: AppColors.white),
                         ),
                       ],
                     ),
@@ -123,11 +123,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             SmoothPageIndicator(
               controller: _controller,
               count: _pages.length,
-              effect: const WormEffect(
+              effect: WormEffect(
                 dotHeight: 8,
                 dotWidth: 8,
-                activeDotColor: AppColors.primary,
-                dotColor: AppColors.divider,
+                activeDotColor: AppColors.white,
+                dotColor: AppColors.white.withOpacity(0.5),
               ),
             ),
             const SizedBox(height: 28),
@@ -137,6 +137,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _next,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.white,
+                    foregroundColor: AppColors.primary,
+                  ),
                   child: Text(isLast ? 'Get Started' : 'Next'),
                 ),
               ),
