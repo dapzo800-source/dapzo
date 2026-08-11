@@ -33,6 +33,19 @@ class CloudinaryService {
       final data = jsonDecode(body);
       return data['secure_url'] as String?;
     }
-    return null;
+
+    // Surface Cloudinary's actual error instead of silently returning null,
+    // so failures (bad cloud name, wrong/missing preset, preset not set to
+    // unsigned, folder rules, etc.) are visible instead of a generic
+    // "please try again".
+    String message = 'Cloudinary upload failed (${response.statusCode})';
+    try {
+      final data = jsonDecode(body);
+      final errMsg = data['error']?['message'];
+      if (errMsg != null) message = '$message: $errMsg';
+    } catch (_) {
+      // Body wasn't JSON — fall back to the generic message above.
+    }
+    throw Exception(message);
   }
 }

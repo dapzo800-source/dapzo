@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../models/address_model.dart';
@@ -74,7 +75,7 @@ class _CheckRadiusScreenState extends State<CheckRadiusScreen> {
     }
 
     final appState = context.read<AppState>();
-    final uid = appState.user?.uid;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
     final address = AddressModel(

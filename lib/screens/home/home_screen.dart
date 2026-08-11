@@ -950,6 +950,77 @@ class _OffersBanner extends StatelessWidget {
 }
 
 // ============================================================================
+// ALL CATEGORIES CHIP
+// ============================================================================
+
+class _AllCategoriesChip extends StatelessWidget {
+  final String mode;
+  const _AllCategoriesChip({required this.mode});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => CategoryScreen(
+          mode: mode,
+          categoryId: '',
+          categoryName: 'All Categories',
+        ),
+      )),
+      child: SizedBox(
+        width: 68,
+        child: Column(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: AppColors.modeGradient(mode)
+                      .map((c) => c.withValues(alpha: 0.18))
+                      .toList(),
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(
+                  color: AppColors.modeColor(mode).withValues(alpha: 0.35),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.modeColor(mode).withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.apps_rounded,
+                color: AppColors.modeColor(mode),
+                size: 26,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'All',
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textMedium,
+                fontWeight: FontWeight.w600,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
 // CATEGORY ROW
 // ============================================================================
 
@@ -990,13 +1061,18 @@ class _CategoryRow extends StatelessWidget {
             );
           }
 
+          // +1 for the leading 'All' chip.
           return ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
-            itemCount: categories.length,
+            itemCount: categories.length + 1,
             separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (context, index) {
-              final cat = categories[index];
+              if (index == 0) {
+                return _AllCategoriesChip(mode: mode);
+              }
+
+              final cat = categories[index - 1];
               final categoryName = cat['name']?.toString() ?? '';
               final categoryId = cat['id']?.toString() ?? '';
               final imageUrl = cat['imageUrl']?.toString() ?? '';

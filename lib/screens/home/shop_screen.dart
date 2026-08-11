@@ -65,6 +65,11 @@ class _ShopScreenState extends State<ShopScreen> {
           }
           final categories = grouped.keys.toList();
 
+          // Popular items from this shop: highest-rated first, top 8.
+          final popular = [...products]
+            ..sort((a, b) => b.rating.compareTo(a.rating));
+          final popularItems = popular.take(8).toList();
+
           return CustomScrollView(
             slivers: [
               // ── Shop Hero App Bar ──────────────────────────────────────
@@ -170,6 +175,51 @@ class _ShopScreenState extends State<ShopScreen> {
                     }),
                   ),
                 ),
+
+              // ── Popular Items ─────────────────────────────────────────
+              // Only shown while no category filter is applied, so it
+              // doesn't compete with a category the user just picked.
+              if (_selectedCategory.isEmpty && popularItems.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                    child: Text('Popular Items', style: AppTextStyles.sectionHeading),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 230,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: popularItems.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final product = popularItems[index];
+                        return ProductCardHorizontal(
+                          product: product,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ProductDetailScreen(productId: product.id),
+                            ),
+                          ),
+                          onAdd: () {
+                            context.read<CartService>().addItem(
+                                  CartItemModel.fromProduct(product),
+                                );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${product.name} added to cart'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
 
               // ── Loading ───────────────────────────────────────────────
               if (snapshot.connectionState == ConnectionState.waiting)
@@ -279,10 +329,11 @@ class _CategoryTabs extends StatelessWidget {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
+        itemCount: categories.length + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final cat = categories[index];
+          final cat = index == 0 ? '' : categories[index - 1];
+          final label = index == 0 ? 'All' : cat;
           final isSelected = selected == cat;
           return GestureDetector(
             onTap: () => onSelect(cat),
@@ -296,7 +347,7 @@ class _CategoryTabs extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                cat,
+                label,
                 style: AppTextStyles.caption.copyWith(
                   color: isSelected ? AppColors.white : AppColors.textMedium,
                   fontWeight: FontWeight.w600,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../models/cart_item_model.dart';
@@ -54,6 +55,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _placeOrder(double total) async {
     final appState = context.read<AppState>();
     final cart = context.read<CartService>();
+    // Use FirebaseAuth's currentUser directly rather than AppState.user —
+    // the uid is available synchronously the moment login succeeds and
+    // doesn't depend on AppState.setUser() having already run.
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     if (cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -79,7 +84,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         final session = await _paymentService.createPaymentSession(
           orderId: 'pending',
           amount: total,
-          userId: appState.user?.uid ?? '',
+          userId: uid,
         );
         // In a full implementation, launch the gateway's checkout UI here
         // with `session`, then call verifyPayment() with its response.
@@ -87,7 +92,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
 
       final orderId = await _orderService.createOrder(
-        userId: appState.user?.uid ?? '',
+        userId: uid,
         items: cart.items,
         subtotal: cart.subtotal,
         deliveryCharge: AppConstants.deliveryChargeDefault,

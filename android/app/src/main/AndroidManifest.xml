@@ -1,4 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Location permissions must be direct children of <manifest>, not
+         nested inside <application> — they were misplaced there before,
+         which is why they weren't taking effect despite being present. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:label="dapzo"
         android:name="${applicationName}"

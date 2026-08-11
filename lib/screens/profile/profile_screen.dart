@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/firestore_seeder.dart';
 import '../../state/app_state.dart';
 import '../auth/onboarding_screen.dart';
+import '../auth/profile_setup_screen.dart';
 import '../location/addresses_screen.dart';
 import '../orders/orders_screen.dart';
 import 'favorites_screen.dart';
@@ -27,34 +28,47 @@ class ProfileScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: AppColors.primary.withOpacity(0.1),
-                backgroundImage: (user?.profileImage.isNotEmpty ?? false)
-                    ? NetworkImage(user!.profileImage)
-                    : null,
-                child: (user?.profileImage.isEmpty ?? true)
-                    ? const Icon(Icons.person, color: AppColors.primary, size: 32)
-                    : null,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(user?.name.isNotEmpty == true ? user!.name : 'Dapzo User', style: AppTextStyles.sectionHeading),
-                    const SizedBox(height: 2),
-                    Text(user?.phone ?? '', style: AppTextStyles.supporting),
-                    if (user?.email.isNotEmpty ?? false)
-                      Text(user!.email, style: AppTextStyles.supporting),
-                  ],
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProfileSetupScreen(isEditing: true)),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  backgroundImage: (user?.profileImage.isNotEmpty ?? false)
+                      ? NetworkImage(user!.profileImage)
+                      : null,
+                  child: (user?.profileImage.isEmpty ?? true)
+                      ? const Icon(Icons.person, color: AppColors.primary, size: 32)
+                      : null,
                 ),
-              ),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(user?.name.isNotEmpty == true ? user!.name : 'Dapzo User', style: AppTextStyles.sectionHeading),
+                      const SizedBox(height: 2),
+                      Text(user?.phone ?? '', style: AppTextStyles.supporting),
+                      if (user?.email.isNotEmpty ?? false)
+                        Text(user!.email, style: AppTextStyles.supporting),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+              ],
+            ),
           ),
           const SizedBox(height: 24),
+          _MenuTile(
+            icon: Icons.edit_outlined,
+            label: 'Edit Profile',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProfileSetupScreen(isEditing: true)),
+            ),
+          ),
           _MenuTile(
             icon: Icons.receipt_long_outlined,
             label: 'My Orders',
@@ -97,8 +111,34 @@ class ProfileScreen extends StatelessWidget {
             label: 'Logout',
             color: AppColors.error,
             onTap: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('Log out?'),
+                  content: const Text('Are you sure you want to log out of Dapzo?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                      child: const Text('Log Out'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirmed != true) return;
+
               await AuthService().signOut();
               if (context.mounted) {
+                // AppState.user (and selectedAddress) previously stayed
+                // populated after Firebase sign-out, since only Firebase
+                // was signed out here — clear it so a stale profile/address
+                // from the old session can't leak into the next login.
+                context.read<AppState>().clearUserData();
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const OnboardingScreen()),
                   (route) => false,

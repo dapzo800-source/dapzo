@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../models/product_model.dart';
 import '../../models/cart_item_model.dart';
 import '../../services/cart_service.dart';
-import '../../state/app_state.dart';
 import '../../widgets/product_card.dart';
 import '../product/product_detail_screen.dart';
 
@@ -15,7 +15,7 @@ class FavoritesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final uid = context.watch<AppState>().user?.uid;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Favorites')),

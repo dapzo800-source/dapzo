@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -16,7 +17,7 @@ class SelectLocationScreen extends StatelessWidget {
     final appState = context.watch<AppState>();
     final addressService = AddressService();
 
-    final uid = appState.user?.uid;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
       appBar: AppBar(
@@ -78,8 +79,13 @@ class SelectLocationScreen extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () async {
-                          final savedAddress =
-                              await Navigator.of(context).push<AddressModel>(
+                          // CheckRadiusScreen pops with a bool (true on
+                          // success) via Navigator.pop(true), not an
+                          // AddressModel — so this push must be typed
+                          // <bool>. Typing it <AddressModel> caused a
+                          // runtime TypeError the moment someone added a
+                          // new address from this screen (checkout flow).
+                          final saved = await Navigator.of(context).push<bool>(
                             MaterialPageRoute(
                               builder: (_) => const CheckRadiusScreen(),
                             ),
@@ -91,13 +97,11 @@ class SelectLocationScreen extends StatelessWidget {
 
                           if (!context.mounted) return;
 
-                          if (savedAddress != null) {
-                            // Set newly created address immediately.
-                            context
-                                .read<AppState>()
-                                .setSelectedAddress(savedAddress);
-
-                            // Return directly to previous screen.
+                          if (saved == true) {
+                            // CheckRadiusScreen already calls
+                            // AppState.setSelectedAddress() itself before
+                            // popping, so there's nothing left to do here
+                            // except return to the previous screen.
                             Navigator.of(context).pop();
                           }
                         },
