@@ -21,6 +21,8 @@ class AppState extends ChangeNotifier {
 
   String? _servingShopId;
 
+  bool _isDarkMode = false;
+
   // ============================================================
   // GETTERS
   // ============================================================
@@ -32,6 +34,8 @@ class AppState extends ChangeNotifier {
   AddressModel? get selectedAddress => _selectedAddress;
 
   String? get servingShopId => _servingShopId;
+
+  bool get isDarkMode => _isDarkMode;
 
   // ============================================================
   // USER
@@ -79,6 +83,15 @@ class AppState extends ChangeNotifier {
 
   void setServingShop(String? shopId) {
     _servingShopId = shopId;
+    notifyListeners();
+  }
+
+  // ============================================================
+  // THEME
+  // ============================================================
+
+  void toggleDarkMode() {
+    _isDarkMode = !_isDarkMode;
     notifyListeners();
   }
 

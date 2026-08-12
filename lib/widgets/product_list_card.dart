@@ -292,7 +292,7 @@ class _QuantityStepperButton extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _StepperIcon(icon: Icons.remove_rounded, onTap: onDecrement),
+          _StepperIcon(icon: Icons.remove, onTap: onDecrement),
           SizedBox(
             width: 24,
             child: Text(
@@ -305,7 +305,7 @@ class _QuantityStepperButton extends StatelessWidget {
               ),
             ),
           ),
-          _StepperIcon(icon: Icons.add_rounded, onTap: onIncrement),
+          _StepperIcon(icon: Icons.add, onTap: onIncrement),
         ],
       ),
     );

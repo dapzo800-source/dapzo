@@ -107,7 +107,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.error_outline, size: 40, color: AppColors.textSecondary),
+                        Icon(Icons.error_outline, size: 40, color: AppColors.textSecondary),
                         const SizedBox(height: 12),
                         Text(
                           'Unable to load product',
@@ -306,7 +306,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                         ),
                                       ),
                                       const SizedBox(width: 3),
-                                      const Icon(Icons.star_rounded, color: AppColors.white, size: 14),
+                                      Icon(Icons.star_rounded, color: AppColors.white, size: 14),
                                     ],
                                   ),
                                 ),

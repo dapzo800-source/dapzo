@@ -4,6 +4,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../services/cart_service.dart';
 import '../../utils/constants.dart';
+import '../../widgets/recommended_combos_section.dart';
 import 'checkout_screen.dart';
 
 /// Cart screen — deliberately excludes Wallet and Refer & Earn per spec.
@@ -23,15 +24,26 @@ class CartScreen extends StatelessWidget {
     final total = subtotal + delivery - discount + tax;
 
     final body = cart.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.shopping_cart_outlined, size: 56, color: AppColors.textSecondary),
-                const SizedBox(height: 12),
-                Text('Your cart is empty', style: AppTextStyles.supporting),
-              ],
-            ),
+        ? ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              const SizedBox(height: 32),
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.shopping_cart_outlined, size: 56, color: AppColors.textSecondary),
+                    const SizedBox(height: 12),
+                    Text('Your cart is empty', style: AppTextStyles.supporting),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Divider(height: 32),
+              const RecommendedCombosSection(),
+              const SizedBox(height: 24),
+              const _MeatRecommendationBanner(),
+            ],
           )
         : ListView(
             padding: const EdgeInsets.all(16),
@@ -51,7 +63,7 @@ class CartScreen extends StatelessWidget {
                               width: 56,
                               height: 56,
                               color: AppColors.background,
-                              child: const Icon(Icons.fastfood, color: AppColors.textSecondary),
+                              child: Icon(Icons.fastfood, color: AppColors.textSecondary),
                             ),
                           ),
                         ),
@@ -90,6 +102,10 @@ class CartScreen extends StatelessWidget {
                       ],
                     ),
                   )),
+              const Divider(height: 32),
+              const RecommendedCombosSection(),
+              const SizedBox(height: 24),
+              const _MeatRecommendationBanner(),
               const Divider(height: 32),
               _SummaryRow('Subtotal', subtotal),
               _SummaryRow('Delivery', delivery),
@@ -170,13 +186,12 @@ class _SummaryRow extends StatelessWidget {
   final String label;
   final double value;
   final bool bold;
+
   const _SummaryRow(this.label, this.value, {this.bold = false});
 
   @override
   Widget build(BuildContext context) {
-    final style = bold
-        ? AppTextStyles.body.copyWith(fontWeight: FontWeight.w700, fontSize: 16)
-        : AppTextStyles.body;
+    final style = bold ? AppTextStyles.body.copyWith(fontWeight: FontWeight.w700, fontSize: 16) : AppTextStyles.supporting;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -185,6 +200,87 @@ class _SummaryRow extends StatelessWidget {
           Text(label, style: style),
           Text('${value < 0 ? '-' : ''}₹${value.abs().toStringAsFixed(0)}', style: style),
         ],
+      ),
+    );
+  }
+}
+
+class _MeatRecommendationBanner extends StatelessWidget {
+  const _MeatRecommendationBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      },
+      child: Container(
+        height: 140,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          image: const DecorationImage(
+            image: AssetImage('assets/images/meat_banner.png'),
+            fit: BoxFit.cover,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ]
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Colors.black.withValues(alpha: 0.8),
+                Colors.transparent,
+              ],
+            ),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Craving Fresh Meat?',
+                style: AppTextStyles.heading.copyWith(
+                  color: AppColors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Explore our premium\nselection of raw cuts.',
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.white.withValues(alpha: 0.8),
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Order Now',
+                  style: AppTextStyles.badge.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

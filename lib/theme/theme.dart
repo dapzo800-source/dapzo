@@ -8,13 +8,12 @@ class AppTheme {
   static ThemeData get light {
     final base = ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
+      brightness: AppColors.isDarkMode ? Brightness.dark : Brightness.light,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         primary: AppColors.primary,
-        brightness: Brightness.light,
+        brightness: AppColors.isDarkMode ? Brightness.dark : Brightness.light,
         surface: AppColors.surface,
-        background: AppColors.background,
       ),
       scaffoldBackgroundColor: AppColors.background,
       fontFamily: GoogleFonts.poppins().fontFamily,
@@ -33,7 +32,7 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           color: AppColors.textDark,
         ),
-        iconTheme: const IconThemeData(color: AppColors.textDark),
+        iconTheme: IconThemeData(color: AppColors.textDark),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -55,7 +54,7 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           minimumSize: const Size.fromHeight(52),
-          side: const BorderSide(color: AppColors.primary, width: 1.5),
+          side: BorderSide(color: AppColors.primary, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -75,7 +74,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderSide: BorderSide(color: AppColors.primary, width: 2),
         ),
         hintStyle: GoogleFonts.poppins(color: AppColors.textHint, fontSize: 14),
       ),
@@ -87,7 +86,7 @@ class AppTheme {
         ),
         margin: EdgeInsets.zero,
       ),
-      dividerTheme: const DividerThemeData(
+      dividerTheme: DividerThemeData(
         color: AppColors.divider,
         thickness: 1,
         space: 1,
@@ -114,7 +113,7 @@ class AppTheme {
         labelStyle: GoogleFonts.poppins(fontSize: 13, color: AppColors.textDark),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.divider),
+          side: BorderSide(color: AppColors.divider),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),

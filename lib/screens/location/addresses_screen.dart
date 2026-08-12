@@ -23,7 +23,7 @@ class AddressesScreen extends StatelessWidget {
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const CheckRadiusScreen()),
         ),
-        child: const Icon(Icons.add, color: AppColors.white),
+        child: Icon(Icons.add, color: AppColors.white),
       ),
       body: uid == null
           ? const SizedBox.shrink()
@@ -44,11 +44,11 @@ class AddressesScreen extends StatelessWidget {
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
-                        leading: const Icon(Icons.location_on_outlined, color: AppColors.primary),
+                        leading: Icon(Icons.location_on_outlined, color: AppColors.primary),
                         title: Text(address.label, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
                         subtitle: Text('${address.address}, ${address.area}, ${address.city}'),
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: AppColors.textSecondary),
+                          icon: Icon(Icons.delete_outline, color: AppColors.textSecondary),
                           onPressed: () => addressService.deleteAddress(uid, address.id),
                         ),
                       ),

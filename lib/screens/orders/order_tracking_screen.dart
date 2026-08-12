@@ -48,7 +48,7 @@ class OrderTrackingScreen extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.cancel_outlined, color: AppColors.error),
+                      Icon(Icons.cancel_outlined, color: AppColors.error),
                       const SizedBox(width: 10),
                       Text('This order was cancelled', style: AppTextStyles.body.copyWith(color: AppColors.error)),
                     ],

@@ -47,7 +47,7 @@ class ModeSelectionScreen extends StatelessWidget {
                               color: AppColors.primary.withOpacity(0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.ramen_dining, size: 48, color: AppColors.primary),
+                            child: Icon(Icons.ramen_dining, size: 48, color: AppColors.primary),
                           ),
                           const SizedBox(height: 24),
                           Text(
@@ -89,7 +89,7 @@ class ModeSelectionScreen extends StatelessWidget {
                               color: AppColors.primary.withOpacity(0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.kebab_dining, size: 48, color: AppColors.primary),
+                            child: Icon(Icons.kebab_dining, size: 48, color: AppColors.primary),
                           ),
                           const SizedBox(height: 24),
                           Text(

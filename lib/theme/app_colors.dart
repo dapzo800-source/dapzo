@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
+  static bool isDarkMode = false;
+
   // ─── Brand Core ─────────────────────────────────────────────────────────────
-  static const Color primary = Color(0xFFFC8019); // Warm Orange
-  static const Color primaryDark = Color(0xFFD9660A);
-  static const Color primaryLight = Color(0xFFFFA94D);
+  static const Color primary = Color(0xFFD32F2F); // Vibrant Red
+  static const Color primaryDark = Color(0xFFB71C1C);
+  static const Color primaryLight = Color(0xFFEF5350);
 
   // ─── Mode Colors ─────────────────────────────────────────────────────────────
   static const Color foodOrange = Color(0xFF10B981); // Fresh Emerald/Teal
@@ -16,7 +18,7 @@ class AppColors {
   static const Color meatRedLight = Color(0xFFFB7185);
 
   // ─── Gradients ────────────────────────────────────────────────────────────────
-  static const List<Color> primaryGradient = [Color(0xFFFFA94D), Color(0xFFFC8019)];
+  static const List<Color> primaryGradient = [Color(0xFFEF5350), Color(0xFFD32F2F)];
   static const List<Color> foodGradient    = [Color(0xFF34D399), Color(0xFF10B981)];
   static const List<Color> meatGradient    = [Color(0xFFFB7185), Color(0xFFE11D48)];
   static const List<Color> heroGradient    = [Color(0xFF312E81), Color(0xFF1E1B4B)];
@@ -43,16 +45,17 @@ class AppColors {
   static const Color error   = Color(0xFFDC2626);
 
   // ─── Neutrals ────────────────────────────────────────────────────────────────
-  static const Color textDark       = Color(0xFF111827);
-  static const Color textMedium     = Color(0xFF374151);
-  static const Color textSecondary  = Color(0xFF6B7280);
-  static const Color textHint       = Color(0xFF9CA3AF);
+  static Color get textDark       => isDarkMode ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+  static Color get textMedium     => isDarkMode ? const Color(0xFFD1D5DB) : const Color(0xFF374151);
+  static Color get textSecondary  => isDarkMode ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+  static Color get textHint       => isDarkMode ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
 
-  static const Color background     = Color(0xFFF8F7F5);
-  static const Color surface        = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF3F4F6);
-  static const Color white          = Color(0xFFFFFFFF);
-  static const Color divider        = Color(0xFFE5E7EB);
+  static Color get background     => isDarkMode ? const Color(0xFF121212) : const Color(0xFFF8F7F5);
+  static Color get surface        => isDarkMode ? const Color(0xFF1E1E1E) : const Color(0xFFFFFFFF);
+  static Color get surfaceVariant => isDarkMode ? const Color(0xFF2C2C2C) : const Color(0xFFF3F4F6);
+  static Color get divider        => isDarkMode ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
+
+  static const Color white        = Color(0xFFFFFFFF);
 
   // ─── Glassmorphism ───────────────────────────────────────────────────────────
   static const Color glassWhite   = Color(0xCCFFFFFF);

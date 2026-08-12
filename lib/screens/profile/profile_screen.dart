@@ -40,7 +40,7 @@ class ProfileScreen extends StatelessWidget {
                       ? NetworkImage(user!.profileImage)
                       : null,
                   child: (user?.profileImage.isEmpty ?? true)
-                      ? const Icon(Icons.person, color: AppColors.primary, size: 32)
+                      ? Icon(Icons.person, color: AppColors.primary, size: 32)
                       : null,
                 ),
                 const SizedBox(width: 16),
@@ -56,7 +56,7 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                Icon(Icons.chevron_right, color: AppColors.textSecondary),
               ],
             ),
           ),
@@ -103,7 +103,19 @@ class ProfileScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const NotificationsScreen()),
             ),
           ),
-          _MenuTile(icon: Icons.settings_outlined, label: 'Settings', onTap: () {}),
+          SwitchListTile(
+            title: Text('Dark Mode', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
+            secondary: Icon(
+              context.watch<AppState>().isDarkMode ? Icons.dark_mode : Icons.light_mode,
+              color: AppColors.primary,
+            ),
+            value: context.watch<AppState>().isDarkMode,
+            onChanged: (_) {
+              context.read<AppState>().toggleDarkMode();
+            },
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            activeColor: AppColors.primary,
+          ),
           const SizedBox(height: 12),
           _MenuTile(
             icon: Icons.logout,
@@ -165,7 +177,7 @@ class _MenuTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: color ?? AppColors.textDark),
       title: Text(label, style: AppTextStyles.body.copyWith(color: color)),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+      trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary),
       onTap: onTap,
     );
   }

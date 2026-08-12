@@ -151,7 +151,7 @@ class _CartBarContent extends StatelessWidget {
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.shopping_bag_rounded,
                       color: AppColors.white,
                       size: 19,
@@ -233,7 +233,7 @@ class _CartBarContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Icon(
+                    Icon(
                       Icons.arrow_forward_rounded,
                       color: AppColors.white,
                       size: 15,

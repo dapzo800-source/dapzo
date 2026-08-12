@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'theme/theme.dart';
+import 'theme/app_colors.dart';
 import 'state/app_state.dart';
 import 'services/cart_service.dart';
 import 'screens/auth/splash_screen.dart';
@@ -32,11 +33,20 @@ class DapzoApp extends StatelessWidget {
           create: (_) => CartService(),
         ),
       ],
-      child: MaterialApp(
-        title: 'Dapzo',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        home: const SplashScreen(),
+      child: Builder(
+        builder: (context) {
+          final appState = context.watch<AppState>();
+          AppColors.isDarkMode = appState.isDarkMode;
+          
+          return MaterialApp(
+            title: 'Dapzo',
+            debugShowCheckedModeBanner: false,
+            themeMode: appState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            theme: AppTheme.light, // light uses dynamic logic inside Theme.dart
+            darkTheme: AppTheme.light,
+            home: const SplashScreen(),
+          );
+        }
       ),
     );
   }

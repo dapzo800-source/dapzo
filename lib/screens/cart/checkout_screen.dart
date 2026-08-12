@@ -158,6 +158,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 8),
             for (final item in cart.items) _buildItemTile(item, cart),
             const SizedBox(height: 22),
+
+            // ── Meat Section Recommendation ──
+            _buildMeatRecommendation(context),
+            const SizedBox(height: 22),
           ],
 
           Text('Delivery Address', style: AppTextStyles.sectionHeading.copyWith(fontSize: 15)),
@@ -174,7 +178,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.location_on_outlined, color: AppColors.primary),
+                  Icon(Icons.location_on_outlined, color: AppColors.primary),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -184,7 +188,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       style: AppTextStyles.body,
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                  Icon(Icons.chevron_right, color: AppColors.textSecondary),
                 ],
               ),
             ),
@@ -328,6 +332,83 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
     );
   }
+
+  Widget _buildMeatRecommendation(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        // Navigate to shop screen with meat category or just pop back to home
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      },
+      child: Container(
+        height: 140,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          image: const DecorationImage(
+            image: AssetImage('assets/images/meat_banner.png'),
+            fit: BoxFit.cover,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ]
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Colors.black.withValues(alpha: 0.8),
+                Colors.transparent,
+              ],
+            ),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Craving Fresh Meat?',
+                style: AppTextStyles.heading.copyWith(
+                  color: AppColors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Explore our premium\nselection of raw cuts.',
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.white.withValues(alpha: 0.8),
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Order Now',
+                  style: AppTextStyles.badge.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Renders a single cart line on the checkout screen — this whole tile was
@@ -379,7 +460,7 @@ class _CheckoutItemTile extends StatelessWidget {
             children: [
               InkWell(
                 onTap: () => cart.decrementQty(item.lineKey),
-                child: const Icon(Icons.remove_circle_outline, size: 20, color: AppColors.textSecondary),
+                child: Icon(Icons.remove_circle_outline, size: 20, color: AppColors.textSecondary),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -387,7 +468,7 @@ class _CheckoutItemTile extends StatelessWidget {
               ),
               InkWell(
                 onTap: () => cart.incrementQty(item.lineKey),
-                child: const Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
+                child: Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
               ),
             ],
           ),
@@ -401,7 +482,7 @@ class _CheckoutItemTile extends StatelessWidget {
       width: 48,
       height: 48,
       color: AppColors.divider,
-      child: const Icon(Icons.fastfood_outlined, size: 20, color: AppColors.textSecondary),
+      child: Icon(Icons.fastfood_outlined, size: 20, color: AppColors.textSecondary),
     );
   }
 }

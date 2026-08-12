@@ -101,7 +101,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
               const SizedBox(height: 12),
               ListTile(
-                leading: const Icon(Icons.photo_camera_outlined, color: AppColors.primary),
+                leading: Icon(Icons.photo_camera_outlined, color: AppColors.primary),
                 title: const Text('Take Photo'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
@@ -109,7 +109,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+                leading: Icon(Icons.photo_library_outlined, color: AppColors.primary),
                 title: const Text('Choose from Gallery'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
@@ -118,8 +118,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
               if (hasPhoto)
                 ListTile(
-                  leading: const Icon(Icons.delete_outline, color: AppColors.error),
-                  title: const Text('Remove Photo', style: TextStyle(color: AppColors.error)),
+                  leading: Icon(Icons.delete_outline, color: AppColors.error),
+                  title: Text('Remove Photo', style: TextStyle(color: AppColors.error)),
                   onTap: () {
                     Navigator.of(sheetContext).pop();
                     setState(() {
@@ -240,7 +240,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               backgroundColor: AppColors.primary.withOpacity(0.1),
               backgroundImage: imageProvider,
               child: imageProvider == null
-                  ? const Icon(Icons.person, size: 44, color: AppColors.primary)
+                  ? Icon(Icons.person, size: 44, color: AppColors.primary)
                   : null,
             ),
             Positioned(
@@ -274,7 +274,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        borderSide: BorderSide(color: AppColors.primary, width: 1.5),
       ),
     );
   }
@@ -332,7 +332,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   onTap: _pickDob,
                   child: InputDecorator(
                     decoration: _fieldDecoration('DD / MM / YYYY').copyWith(
-                      suffixIcon: const Icon(Icons.calendar_today_outlined,
+                      suffixIcon: Icon(Icons.calendar_today_outlined,
                           color: AppColors.textSecondary, size: 20),
                     ),
                     child: Text(

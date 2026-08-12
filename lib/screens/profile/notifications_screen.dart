@@ -30,7 +30,7 @@ class NotificationsScreen extends StatelessWidget {
                     final n = notifications[index];
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.notifications_outlined, color: AppColors.primary),
+                      leading: Icon(Icons.notifications_outlined, color: AppColors.primary),
                       title: Text(n['title'] ?? '', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
                       subtitle: Text(n['body'] ?? '', style: AppTextStyles.supporting),
                     );

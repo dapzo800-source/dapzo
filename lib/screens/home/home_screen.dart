@@ -231,7 +231,7 @@ class _HomeTabState extends State<_HomeTab> {
 
                 final popularShops = snapshot.data ?? [];
                 if (popularShops.isEmpty) {
-                  return const SliverToBoxAdapter(
+                  return SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 48),
                       child: Center(
@@ -284,10 +284,8 @@ class _HomeTabState extends State<_HomeTab> {
   }
 
   // Mode-specific hero images (Craving focused)
-  static const _foodHeroUrl =
-      'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200&q=90'; // Gourmet Burger
-  static const _meatHeroUrl =
-      'https://images.unsplash.com/photo-1544025162-d76694265947?w=1200&q=90'; // Sizzling Steak
+  static const _foodHeroUrl = 'assets/images/biryani_hero.png';
+  static const _meatHeroUrl = 'assets/images/meat_hero.png';
 
 
   Widget _buildHeader(BuildContext context, AppState appState) {
@@ -297,18 +295,12 @@ class _HomeTabState extends State<_HomeTab> {
     return Stack(
       children: [
         // ── Background hero image ─────────────────────────────────────────
-        CachedNetworkImage(
-          imageUrl: heroUrl,
+        Image.asset(
+          heroUrl,
           height: 280,
           width: double.infinity,
           fit: BoxFit.cover,
-          placeholder: (_, __) => Container(
-            height: 280,
-            color: mode == 'meat'
-                ? const Color(0xFF7F1D1D)
-                : const Color(0xFFFF6B35),
-          ),
-          errorWidget: (_, __, ___) => Container(
+          errorBuilder: (_, __, ___) => Container(
             height: 280,
             color: mode == 'meat'
                 ? const Color(0xFF7F1D1D)
@@ -365,7 +357,7 @@ class _HomeTabState extends State<_HomeTab> {
                                 color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(Icons.location_on_rounded,
+                              child: Icon(Icons.location_on_rounded,
                                   color: AppColors.white, size: 18),
                             ),
                             const SizedBox(width: 8),
@@ -527,29 +519,23 @@ class _ModeToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            _ModeChip(
-              label: '🍽️  Food',
-              selected: selected == 'food',
-              color: AppColors.foodOrange,
-              onTap: () => onChanged('food'),
-            ),
-            const SizedBox(width: 4),
-            _ModeChip(
-              label: '🥩  Meat',
-              selected: selected == 'meat',
-              color: AppColors.meatRed,
-              onTap: () => onChanged('meat'),
-            ),
-          ],
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _ModeChip(
+            label: '🍔  Food',
+            selected: selected == 'food',
+            color: Colors.amber.shade700,
+            onTap: () => onChanged('food'),
+          ),
+          const SizedBox(width: 16),
+          _ModeChip(
+            label: '🥩  Meat',
+            selected: selected == 'meat',
+            color: AppColors.meatRed,
+            onTap: () => onChanged('meat'),
+          ),
+        ],
       ),
     );
   }
@@ -577,25 +563,27 @@ class _ModeChip extends StatelessWidget {
         child: GestureDetector(
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 13),
+            padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: selected ? AppColors.white : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: selected
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : [],
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: selected ? color : Colors.transparent,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: selected ? color.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Center(
               child: Text(
                 label,
                 style: AppTextStyles.body.copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                   color: selected ? color : AppColors.textSecondary,
                   fontSize: 15,
                 ),
@@ -980,7 +968,7 @@ class _PopularShopCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.local_offer_rounded,
+                          Icon(Icons.local_offer_rounded,
                               color: AppColors.white, size: 12),
                           const SizedBox(width: 4),
                           Text(offerText, style: AppTextStyles.badge.copyWith(fontSize: 11)),
@@ -1004,7 +992,7 @@ class _PopularShopCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.star_rounded,
+                          Icon(Icons.star_rounded,
                               color: AppColors.white, size: 12),
                           const SizedBox(width: 3),
                           Text(
@@ -1044,14 +1032,14 @@ class _PopularShopCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.access_time_rounded,
+                      Icon(Icons.access_time_rounded,
                           size: 14, color: AppColors.textSecondary),
                       const SizedBox(width: 3),
                       Text('$deliveryMin–$deliveryMax min',
                           style: AppTextStyles.caption),
                       if (distanceLabel != null) ...[
                         const SizedBox(width: 10),
-                        const Icon(Icons.near_me_rounded,
+                        Icon(Icons.near_me_rounded,
                             size: 13, color: AppColors.textSecondary),
                         const SizedBox(width: 3),
                         Text(distanceLabel, style: AppTextStyles.caption),
@@ -1091,7 +1079,7 @@ class _ErrorBox extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, size: 40, color: AppColors.textSecondary),
+          Icon(Icons.error_outline, size: 40, color: AppColors.textSecondary),
           const SizedBox(height: 12),
           Text(
             'Unable to load products',
