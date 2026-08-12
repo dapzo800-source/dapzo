@@ -5,9 +5,9 @@ class AppColors {
   AppColors._();
 
   // ─── Brand Core ─────────────────────────────────────────────────────────────
-  static const Color primary = Color(0xFFDC2626); // Vibrant Red
-  static const Color primaryDark = Color(0xFF991B1B);
-  static const Color primaryLight = Color(0xFFF87171);
+  static const Color primary = Color(0xFFFC8019); // Warm Orange
+  static const Color primaryDark = Color(0xFFD9660A);
+  static const Color primaryLight = Color(0xFFFFA94D);
 
   // ─── Mode Colors ─────────────────────────────────────────────────────────────
   static const Color foodOrange = Color(0xFF10B981); // Fresh Emerald/Teal
@@ -16,7 +16,7 @@ class AppColors {
   static const Color meatRedLight = Color(0xFFFB7185);
 
   // ─── Gradients ────────────────────────────────────────────────────────────────
-  static const List<Color> primaryGradient = [Color(0xFFF87171), Color(0xFFDC2626)];
+  static const List<Color> primaryGradient = [Color(0xFFFFA94D), Color(0xFFFC8019)];
   static const List<Color> foodGradient    = [Color(0xFF34D399), Color(0xFF10B981)];
   static const List<Color> meatGradient    = [Color(0xFFFB7185), Color(0xFFE11D48)];
   static const List<Color> heroGradient    = [Color(0xFF312E81), Color(0xFF1E1B4B)];

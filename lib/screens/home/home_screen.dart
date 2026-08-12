@@ -4,16 +4,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
-import '../../models/product_model.dart';
 import '../../services/product_service.dart';
+import '../../services/shop_service.dart';
 import '../../state/app_state.dart';
 import '../../services/cart_service.dart';
-import '../../models/cart_item_model.dart';
-import '../../widgets/product_card.dart';
 import '../../widgets/search_bar.dart';
-import '../../data/demo_data.dart';
 
-import '../product/product_detail_screen.dart';
 import '../location/select_location_screen.dart';
 import '../orders/orders_screen.dart';
 import '../profile/profile_screen.dart';
@@ -150,22 +146,19 @@ class _HomeTab extends StatefulWidget {
 
 class _HomeTabState extends State<_HomeTab> {
   late final ProductService _productService;
+  late final ShopService _shopService;
 
   @override
   void initState() {
     super.initState();
     _productService = ProductService();
+    _shopService = ShopService();
   }
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final mode = appState.mode;
-
-    // Get shops for current mode
-    final shops = demoShops
-        .where((s) => s['mode'] == mode || s['mode'] == 'both')
-        .toList();
 
     return Container(
       color: AppColors.background,
@@ -208,33 +201,19 @@ class _HomeTabState extends State<_HomeTab> {
             child: _CategoryRow(mode: mode, productService: _productService),
           ),
 
-          // ── Shops + Their Products ────────────────────────────────────────
-          for (final shop in shops) ...[
-            SliverToBoxAdapter(
-              child: _ShopHeader(shop: shop),
-            ),
-            SliverToBoxAdapter(
-              child: _ShopProductRow(
-                shop: shop,
-                mode: mode,
-                productService: _productService,
-              ),
-            ),
-          ],
-
-          // ── Popular Near You ─────────────────────────────────────────────
+          // ── Popular Shops ─────────────────────────────────────────────────
           const SliverToBoxAdapter(
             child: SizedBox(height: 8),
           ),
           SliverToBoxAdapter(
-            child: _SectionHeader(title: 'Popular Near You', onSeeAll: null),
+            child: _SectionHeader(title: 'Popular Shops', onSeeAll: null),
           ),
 
-          // ── Full-width Product List ────────────────────────────────────────
+          // ── Popular Shops List (from Firestore) ─────────────────────────
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: StreamBuilder<List<ProductModel>>(
-              stream: _productService.streamProducts(mode: mode),
+            sliver: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _shopService.streamShops(mode),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return SliverToBoxAdapter(
@@ -250,14 +229,14 @@ class _HomeTabState extends State<_HomeTab> {
                   );
                 }
 
-                final products = snapshot.data ?? [];
-                if (products.isEmpty) {
+                final popularShops = snapshot.data ?? [];
+                if (popularShops.isEmpty) {
                   return const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 48),
                       child: Center(
                         child: Text(
-                          'No products yet.\nTap "Seed Demo Data" in Profile to populate.',
+                          'No shops yet.\nAdd shops in Firestore to populate this list.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
@@ -266,26 +245,32 @@ class _HomeTabState extends State<_HomeTab> {
                   );
                 }
 
+                // Highest-rated shops first.
+                final sorted = [...popularShops]..sort((a, b) {
+                    final ra = (a['rating'] as num?)?.toDouble() ?? 0.0;
+                    final rb = (b['rating'] as num?)?.toDouble() ?? 0.0;
+                    return rb.compareTo(ra);
+                  });
+
                 return SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final product = products[index];
+                      final shop = sorted[index];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: ProductCard(
-                          product: product,
-                          shopName: _shopNameForId(product.shopId),
+                        child: _PopularShopCard(
+                          shop: shop,
+                          selectedAddress: appState.selectedAddress,
+                          shopService: _shopService,
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  ProductDetailScreen(productId: product.id),
+                              builder: (_) => ShopScreen(shop: shop),
                             ),
                           ),
-                          onAdd: () => _addToCart(context, product),
                         ),
                       );
                     },
-                    childCount: products.length,
+                    childCount: sorted.length,
                   ),
                 );
               },
@@ -294,25 +279,6 @@ class _HomeTabState extends State<_HomeTab> {
 
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
-      ),
-    );
-  }
-
-  String? _shopNameForId(String shopId) {
-    try {
-      return demoShops.firstWhere((s) => s['id'] == shopId)['name'] as String;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  void _addToCart(BuildContext context, ProductModel product) {
-    context.read<CartService>().addItem(CartItemModel.fromProduct(product));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${product.name} added to cart'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -675,199 +641,6 @@ class _SectionHeader extends StatelessWidget {
 }
 
 // ============================================================================
-// SHOP HEADER
-// ============================================================================
-
-class _ShopHeader extends StatelessWidget {
-  final Map<String, dynamic> shop;
-
-  const _ShopHeader({required this.shop});
-
-  @override
-  Widget build(BuildContext context) {
-    final rating = (shop['rating'] as num?)?.toDouble() ?? 0.0;
-    final deliveryMin = shop['deliveryTimeMin'] ?? 30;
-    final deliveryMax = shop['deliveryTimeMax'] ?? 50;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-      child: GestureDetector(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => ShopScreen(shop: shop),
-        )),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Shop image/avatar
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: LinearGradient(
-                    colors: AppColors.modeGradient(shop['mode'] ?? 'food'),
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: shop['imageUrl'] != null
-                      ? CachedNetworkImage(
-                          imageUrl: shop['imageUrl'],
-                          fit: BoxFit.cover,
-                          errorWidget: (_, __, ___) => Center(
-                            child: Text(
-                              (shop['name'] as String? ?? 'S')[0],
-                              style: AppTextStyles.shopName
-                                  .copyWith(color: AppColors.white),
-                            ),
-                          ),
-                        )
-                      : Center(
-                          child: Text(
-                            (shop['name'] as String? ?? 'S')[0],
-                            style: AppTextStyles.shopName
-                                .copyWith(color: AppColors.white),
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      shop['name'] ?? '',
-                      style: AppTextStyles.shopName.copyWith(fontSize: 17),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      shop['tagline'] ?? '',
-                      style: AppTextStyles.supporting,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.success,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.star_rounded,
-                                  color: AppColors.white, size: 12),
-                              const SizedBox(width: 2),
-                              Text(
-                                rating.toStringAsFixed(1),
-                                style: AppTextStyles.badge
-                                    .copyWith(fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.access_time_rounded,
-                            size: 14, color: AppColors.textSecondary),
-                        const SizedBox(width: 3),
-                        Text(
-                          '$deliveryMin–$deliveryMax min',
-                          style: AppTextStyles.caption,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              // Arrow
-              const Icon(Icons.arrow_forward_ios_rounded,
-                  size: 16, color: AppColors.textSecondary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// SHOP PRODUCT ROW (horizontal scroll of that shop's products)
-// ============================================================================
-
-class _ShopProductRow extends StatelessWidget {
-  final Map<String, dynamic> shop;
-  final String mode;
-  final ProductService productService;
-
-  const _ShopProductRow({
-    required this.shop,
-    required this.mode,
-    required this.productService,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final shopId = shop['id'] as String;
-    return StreamBuilder<List<ProductModel>>(
-      stream: productService.streamProducts(mode: mode, shopId: shopId, limit: 8),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const SizedBox(height: 8);
-        }
-        final products = snapshot.data!;
-        return SizedBox(
-          height: 230,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: products.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final product = products[index];
-              return ProductCardHorizontal(
-                product: product,
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) =>
-                      ProductDetailScreen(productId: product.id),
-                )),
-                onAdd: () {
-                  context
-                      .read<CartService>()
-                      .addItem(CartItemModel.fromProduct(product));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${product.name} added to cart'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ============================================================================
 // OFFERS BANNER
 // ============================================================================
 
@@ -950,77 +723,6 @@ class _OffersBanner extends StatelessWidget {
 }
 
 // ============================================================================
-// ALL CATEGORIES CHIP
-// ============================================================================
-
-class _AllCategoriesChip extends StatelessWidget {
-  final String mode;
-  const _AllCategoriesChip({required this.mode});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => CategoryScreen(
-          mode: mode,
-          categoryId: '',
-          categoryName: 'All Categories',
-        ),
-      )),
-      child: SizedBox(
-        width: 68,
-        child: Column(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: AppColors.modeGradient(mode)
-                      .map((c) => c.withValues(alpha: 0.18))
-                      .toList(),
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border.all(
-                  color: AppColors.modeColor(mode).withValues(alpha: 0.35),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.modeColor(mode).withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.apps_rounded,
-                color: AppColors.modeColor(mode),
-                size: 26,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'All',
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textMedium,
-                fontWeight: FontWeight.w600,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
 // CATEGORY ROW
 // ============================================================================
 
@@ -1061,18 +763,13 @@ class _CategoryRow extends StatelessWidget {
             );
           }
 
-          // +1 for the leading 'All' chip.
           return ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
-            itemCount: categories.length + 1,
+            itemCount: categories.length,
             separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (context, index) {
-              if (index == 0) {
-                return _AllCategoriesChip(mode: mode);
-              }
-
-              final cat = categories[index - 1];
+              final cat = categories[index];
               final categoryName = cat['name']?.toString() ?? '';
               final categoryId = cat['id']?.toString() ?? '';
               final imageUrl = cat['imageUrl']?.toString() ?? '';
@@ -1153,6 +850,227 @@ class _CategoryRow extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// POPULAR SHOP CARD
+// ============================================================================
+
+/// Full-width shop card used in the "Popular Shops" section — shows the
+/// shop image, name, rating, delivery time, live distance (when a delivery
+/// address is selected), and an offer badge if the shop has one.
+class _PopularShopCard extends StatelessWidget {
+  final Map<String, dynamic> shop;
+  final dynamic selectedAddress; // AddressModel? — kept dynamic to avoid a new import cycle here
+  final ShopService shopService;
+  final VoidCallback onTap;
+
+  const _PopularShopCard({
+    required this.shop,
+    required this.selectedAddress,
+    required this.shopService,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final name = shop['name'] as String? ?? '';
+    final tagline = shop['tagline'] as String? ?? '';
+    final imageUrl = shop['imageUrl'] as String? ?? '';
+    final rating = (shop['rating'] as num?)?.toDouble() ?? 0.0;
+    final ratingCount = shop['ratingCount'] ?? 0;
+    final deliveryMin = shop['deliveryTimeMin'] ?? 30;
+    final deliveryMax = shop['deliveryTimeMax'] ?? 50;
+    final deliveryFee = shop['deliveryFee'] ?? 0;
+    final offerText = (shop['offerText'] ?? shop['offer']) as String?;
+    final mode = shop['mode'] as String? ?? 'food';
+
+    // Live distance — only computed when we have both the shop's and the
+    // user's coordinates.
+    String? distanceLabel;
+    final shopLat = (shop['latitude'] as num?)?.toDouble();
+    final shopLng = (shop['longitude'] as num?)?.toDouble();
+    if (shopLat != null &&
+        shopLng != null &&
+        selectedAddress != null &&
+        selectedAddress.latitude != null &&
+        selectedAddress.longitude != null) {
+      final km = shopService.distanceInKm(
+        selectedAddress.latitude,
+        selectedAddress.longitude,
+        shopLat,
+        shopLng,
+      );
+      distanceLabel = '${km.toStringAsFixed(1)} km';
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.07),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Shop Image ────────────────────────────────────────────
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: imageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(
+                              color: AppColors.surfaceVariant,
+                            ),
+                            errorWidget: (_, __, ___) => Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: AppColors.modeGradient(mode),
+                                ),
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.storefront_rounded,
+                                    color: AppColors.white, size: 36),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: AppColors.modeGradient(mode),
+                              ),
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.storefront_rounded,
+                                  color: AppColors.white, size: 36),
+                            ),
+                          ),
+                  ),
+                ),
+
+                // Offer badge — top left
+                if (offerText != null && offerText.isNotEmpty)
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.local_offer_rounded,
+                              color: AppColors.white, size: 12),
+                          const SizedBox(width: 4),
+                          Text(offerText, style: AppTextStyles.badge.copyWith(fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // Rating badge — top right
+                if (rating > 0)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.success,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star_rounded,
+                              color: AppColors.white, size: 12),
+                          const SizedBox(width: 3),
+                          Text(
+                            ratingCount > 0
+                                ? '${rating.toStringAsFixed(1)} ($ratingCount)'
+                                : rating.toStringAsFixed(1),
+                            style: AppTextStyles.badge.copyWith(fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            // ── Info Section ──────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: AppTextStyles.shopName.copyWith(fontSize: 16),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (tagline.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      tagline,
+                      style: AppTextStyles.supporting,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time_rounded,
+                          size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: 3),
+                      Text('$deliveryMin–$deliveryMax min',
+                          style: AppTextStyles.caption),
+                      if (distanceLabel != null) ...[
+                        const SizedBox(width: 10),
+                        const Icon(Icons.near_me_rounded,
+                            size: 13, color: AppColors.textSecondary),
+                        const SizedBox(width: 3),
+                        Text(distanceLabel, style: AppTextStyles.caption),
+                      ],
+                      const SizedBox(width: 10),
+                      Icon(Icons.delivery_dining_rounded,
+                          size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: 3),
+                      Text(
+                        deliveryFee == 0 ? 'Free delivery' : '₹$deliveryFee delivery',
+                        style: AppTextStyles.caption,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

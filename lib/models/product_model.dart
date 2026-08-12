@@ -62,8 +62,11 @@ class ProductModel {
       id: doc.id,
       name: data['name'] ?? '',
       description: data['description'] ?? '',
-      category: data['category'] ?? '',
-      subCategory: data['subCategory'] ?? '',
+      // NOTE: Firestore docs store this as "categoryName", not "category".
+      // Fall back to "category" too in case older docs used that name.
+      category: data['category'] ?? data['categoryName'] ?? '',
+      // NOTE: Firestore docs store this as "subCategoryId", not "subCategory".
+      subCategory: data['subCategory'] ?? data['subCategoryId'] ?? '',
       mode: data['mode'] ?? 'food',
       price: (data['price'] ?? 0).toDouble(),
       unit: data['unit'] ?? '',

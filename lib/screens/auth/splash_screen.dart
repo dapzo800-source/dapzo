@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../services/auth_service.dart';
+import '../../models/user_model.dart';
+import '../../state/app_state.dart';
 import '../home/home_screen.dart';
 import 'onboarding_screen.dart';
 import 'profile_setup_screen.dart';
@@ -135,7 +138,46 @@ class _SplashScreenState extends State<SplashScreen> {
 
       // ============================================================
       // STEP 5: EXISTING USER
+      // LOAD FULL PROFILE FROM FIRESTORE INTO APP STATE
       // ============================================================
+      //
+      // Previously this step was skipped entirely — the splash screen
+      // routed straight to HomeScreen without ever populating
+      // AppState.user from Firestore. Any screen reading user.email,
+      // user.dateOfBirth, etc. right after a cold start would see stale
+      // or empty values until something else happened to call setUser
+      // with a full profile (e.g. opening Edit Profile and saving again).
+
+      debugPrint('EXISTING USER → LOADING PROFILE');
+
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get()
+            .timeout(const Duration(seconds: 10));
+
+        if (doc.exists) {
+          final profile = UserModel.fromFirestore(doc);
+
+          if (!mounted) return;
+          context.read<AppState>().setUser(profile);
+
+          debugPrint('Loaded profile: name=${profile.name}, email=${profile.email}');
+        } else {
+          debugPrint('Profile document does not exist for ${user.uid}');
+        }
+      } catch (e) {
+        // Don't block navigation to Home just because the profile fetch
+        // failed — HomeScreen/ProfileScreen will show fallback values
+        // and the user can retry from there. Log it for visibility.
+        debugPrint('======================================');
+        debugPrint('FAILED TO LOAD USER PROFILE IN SPLASH');
+        debugPrint(e.toString());
+        debugPrint('======================================');
+      }
+
+      if (!mounted) return;
 
       debugPrint('EXISTING USER → HOME');
 

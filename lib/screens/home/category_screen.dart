@@ -7,7 +7,8 @@ import '../../models/product_model.dart';
 import '../../models/cart_item_model.dart';
 import '../../services/product_service.dart';
 import '../../services/cart_service.dart';
-import '../../widgets/product_card.dart';
+import '../../widgets/product_list_card.dart';
+import '../../widgets/animated_cart_bar.dart';
 import '../product/product_detail_screen.dart';
 
 class CategoryScreen extends StatefulWidget {
@@ -53,7 +54,9 @@ class _CategoryScreenState extends State<CategoryScreen>
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
+      body: Stack(
+        children: [
+          CustomScrollView(
         slivers: [
           // ── Sliver App Bar ────────────────────────────────────────────
           SliverAppBar(
@@ -134,7 +137,7 @@ class _CategoryScreenState extends State<CategoryScreen>
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               sliver: _ProductSliverList(
                 productService: _productService,
                 mode: widget.mode,
@@ -142,6 +145,9 @@ class _CategoryScreenState extends State<CategoryScreen>
                 categoryName: widget.categoryName,
               ),
             ),
+        ],
+          ),
+          const AnimatedCartBar(),
         ],
       ),
     );
@@ -204,13 +210,14 @@ class _ProductList extends StatelessWidget {
         }
 
         return ListView.separated(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           itemCount: products.length,
           separatorBuilder: (_, __) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
             final product = products[index];
-            return ProductCard(
+            return ProductListCard(
               product: product,
+              highlyReordered: product.rating >= 4.0,
               onTap: () => _openDetail(context, product.id),
               onAdd: () => _addToCart(context, product),
             );
@@ -230,12 +237,6 @@ class _ProductList extends StatelessWidget {
 
   void _addToCart(BuildContext context, ProductModel product) {
     context.read<CartService>().addItem(CartItemModel.fromProduct(product));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${product.name} added to cart'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 }
 
@@ -307,8 +308,9 @@ class _ProductSliverList extends StatelessWidget {
               final product = products[index];
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: ProductCard(
+                child: ProductListCard(
                   product: product,
+                  highlyReordered: product.rating >= 4.0,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) =>
@@ -319,12 +321,6 @@ class _ProductSliverList extends StatelessWidget {
                     context
                         .read<CartService>()
                         .addItem(CartItemModel.fromProduct(product));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${product.name} added to cart'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
                   },
                 ),
               );

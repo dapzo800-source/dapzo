@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../models/product_model.dart';
 import '../../models/cart_item_model.dart';
 import '../../services/cart_service.dart';
-import '../../widgets/product_card.dart';
+import '../../widgets/product_list_card.dart';
 import '../product/product_detail_screen.dart';
 
 class FavoritesScreen extends StatelessWidget {
@@ -44,19 +43,20 @@ class FavoritesScreen extends StatelessWidget {
                       return const Center(child: CircularProgressIndicator());
                     }
                     final products = snapshot.data!;
-                    return GridView.builder(
+                    if (products.isEmpty) {
+                      return Center(
+                        child: Text('No favorites yet', style: AppTextStyles.supporting),
+                      );
+                    }
+                    return ListView.separated(
                       padding: const EdgeInsets.all(16),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 0.72,
-                      ),
                       itemCount: products.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 16),
                       itemBuilder: (context, index) {
                         final product = products[index];
-                        return ProductCard(
+                        return ProductListCard(
                           product: product,
+                          highlyReordered: product.rating >= 4.0,
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => ProductDetailScreen(productId: product.id)),
                           ),
