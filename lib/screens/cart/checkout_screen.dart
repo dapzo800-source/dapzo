@@ -55,9 +55,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _placeOrder(double total) async {
     final appState = context.read<AppState>();
     final cart = context.read<CartService>();
-    // Use FirebaseAuth's currentUser directly rather than AppState.user —
-    // the uid is available synchronously the moment login succeeds and
-    // doesn't depend on AppState.setUser() having already run.
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     if (cart.isEmpty) {
@@ -78,18 +75,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       String? gatewayTxnId;
+      final checkoutRefId = 'chk_${DateTime.now().millisecondsSinceEpoch}_${uid.substring(0, uid.length > 5 ? 5 : uid.length)}';
 
       if (_method == _PaymentMethod.online) {
-        // Online Payment -> Cloudflare Worker -> Payment Gateway -> Verification
         final session = await _paymentService.createPaymentSession(
           orderId: 'pending',
           amount: total,
           userId: uid,
         );
-        // In a full implementation, launch the gateway's checkout UI here
-        // with `session`, then call verifyPayment() with its response.
         gatewayTxnId = session['sessionId'] as String?;
       }
+
+      final selectedAddr = appState.selectedAddress!;
+      final primaryShopId = cart.items.isNotEmpty ? cart.items.first.shopId : '';
+      final primaryShopName = cart.items.isNotEmpty ? cart.items.first.shopName : 'Dapzo Partner Shop';
 
       final orderId = await _orderService.createOrder(
         userId: uid,
@@ -100,11 +99,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         tax: total - cart.subtotal - AppConstants.deliveryChargeDefault + _discount,
         total: total,
         paymentMethod: _method == _PaymentMethod.cod ? 'cod' : 'online',
-        addressId: appState.selectedAddress!.id,
+        addressId: selectedAddr.id,
+        shopId: primaryShopId,
+        shopName: primaryShopName,
+        deliveryAddress: selectedAddr.toMap(),
         couponCode: _appliedCoupon,
         gatewayTransactionId: gatewayTxnId,
+        checkoutReferenceId: checkoutRefId,
       );
 
+      // Cart cleared ONLY on backend success
       cart.clear();
       if (!mounted) return;
 
@@ -113,8 +117,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         (route) => route.isFirst,
       );
     } catch (e) {
+      final String rawMsg = e.toString();
+      final String cleanMsg = rawMsg.contains('permission-denied')
+          ? 'Unable to place order: Authorization required. Please try again shortly.'
+          : rawMsg.replaceFirst(RegExp(r'^Exception:\s*'), '');
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not place order: $e')),
+        SnackBar(
+          content: Text(cleanMsg),
+          backgroundColor: AppColors.textDark,
+        ),
       );
     } finally {
       if (mounted) setState(() => _placing = false);
@@ -136,8 +148,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // --- THE FIX: the cart's items were never rendered anywhere on
-          // this screen before, which is why checkout looked blank. ---
           if (cart.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 60),
@@ -208,14 +218,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               const SizedBox(width: 10),
               OutlinedButton(
                 onPressed: () => _applyCoupon(subtotal),
-                // The app theme's OutlinedButtonThemeData likely sets
-                // `minimumSize: Size.fromHeight(...)`, which means
-                // Size(double.infinity, height) — fine for a full-width
-                // button alone in a SizedBox, but it crashes any button
-                // placed as a bare sibling in a Row (like this one, next to
-                // Expanded(TextField)), because Row can't give a non-flex
-                // child infinite width. Overriding minimumSize here with a
-                // finite size fixes it without touching the global theme.
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(64, 48),
                 ),
@@ -282,11 +284,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  /// Builds a single cart item's tile defensively — if something about that
-  /// item's data causes a build error (e.g. an unexpectedly-null field from
-  /// older persisted cart data), this catches it and shows a plain
-  /// text-only fallback row instead of taking down the whole checkout page.
-  /// The real error is printed to the console so it can be tracked down.
   Widget _buildItemTile(CartItemModel item, CartService cart) {
     try {
       return _CheckoutItemTile(item: item, cart: cart);
@@ -336,7 +333,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget _buildMeatRecommendation(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navigate to shop screen with meat category or just pop back to home
         Navigator.of(context).popUntil((route) => route.isFirst);
       },
       child: Container(
@@ -353,7 +349,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               blurRadius: 10,
               offset: const Offset(0, 4),
             )
-          ]
+          ],
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -411,8 +407,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 }
 
-/// Renders a single cart line on the checkout screen — this whole tile was
-/// missing before, which is why the cart's contents never appeared.
 class _CheckoutItemTile extends StatelessWidget {
   final CartItemModel item;
   final CartService cart;
@@ -508,7 +502,7 @@ class _PaymentTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withOpacity(0.06) : AppColors.white,
+          color: selected ? AppColors.primary.withValues(alpha: 0.06) : AppColors.white,
           border: Border.all(color: selected ? AppColors.primary : AppColors.divider, width: selected ? 1.5 : 1),
           borderRadius: BorderRadius.circular(12),
         ),

@@ -76,10 +76,18 @@ class OrderModel {
 
   factory OrderModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
+
+    DateTime? parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      return null;
+    }
+
     return OrderModel(
       id: doc.id,
-      orderCode: data['orderCode'] ?? doc.id,
-      userId: data['userId'] ?? '',
+      orderCode: data['orderCode'] ?? data['orderNumber'] ?? doc.id,
+      userId: data['userId'] ?? data['customerId'] ?? '',
       items: (data['items'] as List<dynamic>? ?? [])
           .map((e) => CartItemModel.fromMap(Map<String, dynamic>.from(e)))
           .toList(),
@@ -87,13 +95,13 @@ class OrderModel {
       deliveryCharge: (data['deliveryCharge'] ?? 0).toDouble(),
       discount: (data['discount'] ?? 0).toDouble(),
       tax: (data['tax'] ?? 0).toDouble(),
-      total: (data['total'] ?? 0).toDouble(),
+      total: (data['total'] ?? data['totalAmount'] ?? 0).toDouble(),
       paymentMethod: data['paymentMethod'] ?? 'cod',
       paymentStatus: data['paymentStatus'] ?? 'pending',
       status: OrderStatusX.fromString(data['status'] ?? 'placed'),
       addressId: data['addressId'] ?? '',
       couponCode: data['couponCode'],
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+      createdAt: parseDate(data['createdAt']),
     );
   }
 }

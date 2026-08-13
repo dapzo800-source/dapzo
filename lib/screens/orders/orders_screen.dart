@@ -62,22 +62,27 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
           tabs: _tabs.map((t) => Tab(text: t)).toList(),
         ),
       ),
-      body: uid == null
+      body: uid == null || uid.isEmpty
           ? Center(child: Text('Please sign in to view orders', style: AppTextStyles.supporting))
           : StreamBuilder<List<OrderModel>>(
               stream: _orderService.streamUserOrders(uid),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
+                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final orders = snapshot.data!;
+
+                final orders = snapshot.data ?? [];
+
                 return TabBarView(
                   controller: _tabController,
                   children: List.generate(_tabs.length, (tabIndex) {
                     final filtered = orders.where((o) => _matchesTab(o, tabIndex)).toList();
                     if (filtered.isEmpty) {
                       return Center(
-                        child: Text('No orders here yet', style: AppTextStyles.supporting),
+                        child: Text(
+                          orders.isEmpty ? 'No orders placed yet' : 'No orders in this category',
+                          style: AppTextStyles.supporting,
+                        ),
                       );
                     }
                     return ListView.builder(
@@ -85,6 +90,8 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final order = filtered[index];
+                        final isOnline = order.paymentMethod == 'online';
+
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           child: Padding(
@@ -100,9 +107,34 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                                   ],
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  order.items.isNotEmpty ? order.items.first.name : '',
-                                  style: AppTextStyles.supporting,
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        order.items.isNotEmpty ? order.items.first.name : 'Dapzo Order',
+                                        style: AppTextStyles.supporting,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: isOnline
+                                            ? AppColors.primary.withValues(alpha: 0.1)
+                                            : AppColors.textSecondary.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        isOnline ? 'Online Payment' : 'Cash on Delivery',
+                                        style: AppTextStyles.caption.copyWith(
+                                          fontSize: 10,
+                                          color: isOnline ? AppColors.primary : AppColors.textDark,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
