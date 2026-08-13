@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -29,8 +30,62 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   int _navIndex = 0;
+  bool _isNavVisible = true;
+  Timer? _scrollIdleTimer;
+  late final AnimationController _navAnimController;
+  late final Animation<Offset> _navSlideAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _navAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
+    _navSlideAnim = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0, 1.2),
+    ).animate(CurvedAnimation(
+      parent: _navAnimController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _scrollIdleTimer?.cancel();
+    _navAnimController.dispose();
+    super.dispose();
+  }
+
+  void _onScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification) {
+      // Hide nav on scroll
+      if (_isNavVisible) {
+        setState(() => _isNavVisible = false);
+        _navAnimController.forward();
+      }
+      // Reset idle timer
+      _scrollIdleTimer?.cancel();
+      _scrollIdleTimer = Timer(const Duration(milliseconds: 600), () {
+        if (mounted && !_isNavVisible) {
+          setState(() => _isNavVisible = true);
+          _navAnimController.reverse();
+        }
+      });
+    } else if (notification is ScrollEndNotification) {
+      _scrollIdleTimer?.cancel();
+      _scrollIdleTimer = Timer(const Duration(milliseconds: 300), () {
+        if (mounted && !_isNavVisible) {
+          setState(() => _isNavVisible = true);
+          _navAnimController.reverse();
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,18 +99,28 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return Scaffold(
-      body: IndexedStack(index: _navIndex, children: pages),
-      bottomNavigationBar: _BottomNav(
-        currentIndex: _navIndex,
-        cartCount: cartCount,
-        onTap: (i) => setState(() => _navIndex = i),
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          _onScrollNotification(notification);
+          return false;
+        },
+        child: IndexedStack(index: _navIndex, children: pages),
+      ),
+      extendBody: true,
+      bottomNavigationBar: SlideTransition(
+        position: _navSlideAnim,
+        child: _BottomNav(
+          currentIndex: _navIndex,
+          cartCount: cartCount,
+          onTap: (i) => setState(() => _navIndex = i),
+        ),
       ),
     );
   }
 }
 
 // ============================================================================
-// BOTTOM NAV
+// BOTTOM NAV — Floating pill design
 // ============================================================================
 
 class _BottomNav extends StatelessWidget {
@@ -71,47 +136,62 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: BottomNavigationBar(
-          currentIndex: currentIndex,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: AppColors.white,
-          elevation: 0,
-          onTap: onTap,
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
-              label: 'Home',
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: AppColors.isDarkMode ? 0.3 : 0.1),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
             ),
-            BottomNavigationBarItem(
-              icon: _CartIcon(count: cartCount, filled: false),
-              activeIcon: _CartIcon(count: cartCount, filled: true),
-              label: 'Cart',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_outlined),
-              activeIcon: Icon(Icons.receipt_long_rounded),
-              label: 'Orders',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline_rounded),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Profile',
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
           ],
+          border: Border.all(
+            color: AppColors.isDarkMode
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.04),
+            width: 1,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: BottomNavigationBar(
+            currentIndex: currentIndex,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            onTap: onTap,
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home_rounded),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: _CartIcon(count: cartCount, filled: false),
+                activeIcon: _CartIcon(count: cartCount, filled: true),
+                label: 'Cart',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.receipt_long_outlined),
+                activeIcon: Icon(Icons.receipt_long_rounded),
+                label: 'Orders',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline_rounded),
+                activeIcon: Icon(Icons.person_rounded),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -177,6 +257,12 @@ class _HomeTabState extends State<_HomeTab> {
             ),
           ),
 
+          // ── Filter Chips (food mode only) ────────────────────────────────
+          if (mode == 'food')
+            SliverToBoxAdapter(
+              child: _FilterChips(appState: appState),
+            ),
+
           // ── Offers ───────────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: _OffersBanner(mode: mode, productService: _productService),
@@ -202,9 +288,6 @@ class _HomeTabState extends State<_HomeTab> {
           ),
 
           // ── Popular Shops ─────────────────────────────────────────────────
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 8),
-          ),
           SliverToBoxAdapter(
             child: _SectionHeader(title: 'Popular Shops', onSeeAll: null),
           ),
@@ -277,7 +360,8 @@ class _HomeTabState extends State<_HomeTab> {
             ),
           ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          // Extra bottom padding for floating nav bar
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
     );
@@ -483,7 +567,7 @@ class _HomeTabState extends State<_HomeTab> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
@@ -506,6 +590,151 @@ class _HomeTabState extends State<_HomeTab> {
 }
 
 // ============================================================================
+// FILTER CHIPS (Food mode only)
+// ============================================================================
+
+class _FilterChips extends StatelessWidget {
+  final AppState appState;
+
+  const _FilterChips({required this.appState});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        children: [
+          _FilterChip(
+            icon: Icons.eco_rounded,
+            label: 'Veg Mode',
+            isActive: appState.isVegMode,
+            activeColor: const Color(0xFF16A34A),
+            onTap: appState.toggleVegMode,
+          ),
+          const SizedBox(width: 8),
+          _FilterChip(
+            icon: Icons.currency_rupee_rounded,
+            label: 'Under ₹199',
+            isActive: appState.isUnder199,
+            activeColor: Colors.amber.shade700,
+            onTap: appState.toggleUnder199,
+          ),
+          const SizedBox(width: 8),
+          _FilterChip(
+            icon: Icons.star_rounded,
+            label: 'Rating 4.0+',
+            isActive: appState.isRating4Plus,
+            activeColor: const Color(0xFFF59E0B),
+            onTap: appState.toggleRating4Plus,
+          ),
+          if (appState.hasActiveFilters) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: appState.clearFilters,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.close_rounded, size: 14, color: AppColors.error),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Clear',
+                      style: AppTextStyles.caption.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final Color activeColor;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.activeColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive
+              ? activeColor.withValues(alpha: 0.12)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive
+                ? activeColor.withValues(alpha: 0.5)
+                : AppColors.divider,
+            width: 1.2,
+          ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: activeColor.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 15,
+              color: isActive ? activeColor : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: AppTextStyles.caption.copyWith(
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive ? activeColor : AppColors.textMedium,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
 // MODE TOGGLE
 // ============================================================================
 
@@ -518,7 +747,7 @@ class _ModeToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -565,7 +794,7 @@ class _ModeChip extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: selected ? color : Colors.transparent,
@@ -609,7 +838,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 8, 10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -651,7 +880,7 @@ class _OffersBanner extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Text('🎉 Offers for You',
                   style: AppTextStyles.sectionHeading),
             ),
@@ -899,7 +1128,7 @@ class _PopularShopCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(

@@ -10,6 +10,7 @@ import '../models/address_model.dart';
 /// - Current mode: food / meat
 /// - Currently selected delivery address
 /// - Serving shop ID
+/// - Food-mode filters (veg, price, rating)
 ///
 /// Cart is managed separately by CartService.
 class AppState extends ChangeNotifier {
@@ -22,6 +23,11 @@ class AppState extends ChangeNotifier {
   String? _servingShopId;
 
   bool _isDarkMode = false;
+
+  // ── Food-mode filters ──────────────────────────────────────────
+  bool _isVegMode = false;
+  bool _isUnder199 = false;
+  bool _isRating4Plus = false;
 
   // ============================================================
   // GETTERS
@@ -36,6 +42,13 @@ class AppState extends ChangeNotifier {
   String? get servingShopId => _servingShopId;
 
   bool get isDarkMode => _isDarkMode;
+
+  bool get isVegMode => _isVegMode;
+  bool get isUnder199 => _isUnder199;
+  bool get isRating4Plus => _isRating4Plus;
+
+  /// True when any food-mode filter is active.
+  bool get hasActiveFilters => _isVegMode || _isUnder199 || _isRating4Plus;
 
   // ============================================================
   // USER
@@ -60,6 +73,14 @@ class AppState extends ChangeNotifier {
     }
 
     _mode = mode;
+
+    // Reset food-mode filters when switching to meat
+    if (mode == 'meat') {
+      _isVegMode = false;
+      _isUnder199 = false;
+      _isRating4Plus = false;
+    }
+
     notifyListeners();
   }
 
@@ -92,6 +113,32 @@ class AppState extends ChangeNotifier {
 
   void toggleDarkMode() {
     _isDarkMode = !_isDarkMode;
+    notifyListeners();
+  }
+
+  // ============================================================
+  // FOOD-MODE FILTERS
+  // ============================================================
+
+  void toggleVegMode() {
+    _isVegMode = !_isVegMode;
+    notifyListeners();
+  }
+
+  void toggleUnder199() {
+    _isUnder199 = !_isUnder199;
+    notifyListeners();
+  }
+
+  void toggleRating4Plus() {
+    _isRating4Plus = !_isRating4Plus;
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _isVegMode = false;
+    _isUnder199 = false;
+    _isRating4Plus = false;
     notifyListeners();
   }
 

@@ -62,7 +62,7 @@ class _CategoryScreenState extends State<CategoryScreen>
           SliverAppBar(
             pinned: true,
             expandedHeight: 140,
-            backgroundColor: AppColors.white,
+            backgroundColor: AppColors.surface,
             foregroundColor: AppColors.textDark,
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsets.fromLTRB(56, 0, 16, 16),

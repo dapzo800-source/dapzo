@@ -67,7 +67,7 @@ class _ShopScreenState extends State<ShopScreen> {
                   slivers: [
                     SliverAppBar(
                       pinned: true,
-                      backgroundColor: AppColors.white,
+                      backgroundColor: AppColors.surface,
                       foregroundColor: AppColors.textSecondary,
                       title: Text(
                         shopName,
@@ -175,7 +175,7 @@ class _ShopScreenState extends State<ShopScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.white,
+                                  color: AppColors.surface,
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
@@ -529,7 +529,7 @@ class _CircleIconButton extends StatelessWidget {
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: AppColors.surface,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 6, offset: const Offset(0, 2)),
@@ -586,7 +586,7 @@ class _CategoryTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.white,
+      color: AppColors.surface,
       height: 54,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -603,7 +603,7 @@ class _CategoryTabs extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.white,
+                color: isSelected ? AppColors.primary : AppColors.surface,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
                   color: isSelected ? AppColors.primary : AppColors.surfaceVariant,

@@ -177,7 +177,7 @@ class CartScreen extends StatelessWidget {
         ? null
         : Container(
             padding: const EdgeInsets.all(16),
-            color: AppColors.white,
+            color: AppColors.surface,
             child: SafeArea(
               top: false,
               child: SizedBox(

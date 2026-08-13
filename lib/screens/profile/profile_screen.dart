@@ -11,6 +11,7 @@ import '../orders/orders_screen.dart';
 import 'favorites_screen.dart';
 import 'offers_screen.dart';
 import 'notifications_screen.dart';
+import 'settings_screen.dart';
 
 /// Profile screen — Customer account options and settings.
 class ProfileScreen extends StatelessWidget {
@@ -111,18 +112,12 @@ class ProfileScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const NotificationsScreen()),
             ),
           ),
-          SwitchListTile(
-            title: Text('Dark Mode', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-            secondary: Icon(
-              context.watch<AppState>().isDarkMode ? Icons.dark_mode : Icons.light_mode,
-              color: AppColors.primary,
+          _MenuTile(
+            icon: Icons.settings_outlined,
+            label: 'Settings',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
             ),
-            value: context.watch<AppState>().isDarkMode,
-            onChanged: (_) {
-              context.read<AppState>().toggleDarkMode();
-            },
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            activeColor: AppColors.primary,
           ),
           const SizedBox(height: 12),
           _MenuTile(

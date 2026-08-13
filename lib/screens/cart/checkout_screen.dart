@@ -245,7 +245,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: AppColors.surface,
               border: Border.all(color: AppColors.divider),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -294,7 +294,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: AppColors.surface,
           border: Border.all(color: AppColors.divider),
           borderRadius: BorderRadius.circular(12),
         ),
@@ -419,7 +419,7 @@ class _CheckoutItemTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         border: Border.all(color: AppColors.divider),
         borderRadius: BorderRadius.circular(12),
       ),
@@ -502,7 +502,7 @@ class _PaymentTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withValues(alpha: 0.06) : AppColors.white,
+          color: selected ? AppColors.primary.withValues(alpha: 0.06) : AppColors.surface,
           border: Border.all(color: selected ? AppColors.primary : AppColors.divider, width: selected ? 1.5 : 1),
           borderRadius: BorderRadius.circular(12),
         ),

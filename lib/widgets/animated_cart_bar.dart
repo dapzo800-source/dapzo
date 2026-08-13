@@ -128,7 +128,7 @@ class _CartBarContent extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -166,7 +166,7 @@ class _CartBarContent extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.error,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.white, width: 1.5),
+                        border: Border.all(color: AppColors.surface, width: 1.5),
                       ),
                       child: Center(
                         child: Text(

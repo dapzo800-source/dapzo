@@ -21,7 +21,7 @@ class AppTheme {
 
     return base.copyWith(
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.white,
+        backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textDark,
         elevation: 0,
         shadowColor: Colors.transparent,
@@ -79,7 +79,7 @@ class AppTheme {
         hintStyle: GoogleFonts.poppins(color: AppColors.textHint, fontSize: 14),
       ),
       cardTheme: CardThemeData(
-        color: AppColors.white,
+        color: AppColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -92,7 +92,7 @@ class AppTheme {
         space: 1,
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: AppColors.white,
+        backgroundColor: AppColors.surface,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
         showUnselectedLabels: true,
@@ -126,4 +126,3 @@ class AppTheme {
     );
   }
 }
-

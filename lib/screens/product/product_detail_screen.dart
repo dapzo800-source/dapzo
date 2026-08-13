@@ -98,7 +98,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               slivers: [
                 SliverAppBar(
                   pinned: true,
-                  backgroundColor: AppColors.white,
+                  backgroundColor: AppColors.surface,
                   foregroundColor: AppColors.textDark,
                 ),
                 SliverToBoxAdapter(
@@ -388,7 +388,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
-                        color: AppColors.white,
+                        color: AppColors.surface,
                         borderRadius: BorderRadius.circular(18),
                         boxShadow: [
                           BoxShadow(
@@ -468,7 +468,7 @@ class _CircleIconButton extends StatelessWidget {
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: AppColors.surface,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 6, offset: const Offset(0, 2)),
@@ -536,7 +536,7 @@ class _QuantityStepper extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.primary, width: 1.5),
       ),
