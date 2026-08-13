@@ -257,11 +257,10 @@ class _HomeTabState extends State<_HomeTab> {
             ),
           ),
 
-          // ── Filter Chips (food mode only) ────────────────────────────────
-          if (mode == 'food')
-            SliverToBoxAdapter(
-              child: _FilterChips(appState: appState),
-            ),
+          // ── Filter Chips ──────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: _FilterChips(appState: appState),
+          ),
 
           // ── Categories Header ────────────────────────────────────────────
           SliverToBoxAdapter(
@@ -592,7 +591,7 @@ class _HomeTabState extends State<_HomeTab> {
 }
 
 // ============================================================================
-// FILTER CHIPS (Food mode only)
+// FILTER CHIPS
 // ============================================================================
 
 class _FilterChips extends StatelessWidget {
@@ -602,20 +601,23 @@ class _FilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isFood = appState.mode == 'food';
     return SizedBox(
       height: 48,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
         children: [
-          _FilterChip(
-            icon: Icons.eco_rounded,
-            label: 'Veg Mode',
-            isActive: appState.isVegMode,
-            activeColor: const Color(0xFF16A34A),
-            onTap: appState.toggleVegMode,
-          ),
-          const SizedBox(width: 8),
+          if (isFood) ...[
+            _FilterChip(
+              icon: Icons.eco_rounded,
+              label: 'Veg Mode',
+              isActive: appState.isVegMode,
+              activeColor: const Color(0xFF16A34A),
+              onTap: appState.toggleVegMode,
+            ),
+            const SizedBox(width: 8),
+          ],
           _FilterChip(
             icon: Icons.currency_rupee_rounded,
             label: 'Under ₹199',

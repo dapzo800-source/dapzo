@@ -112,7 +112,7 @@ class _ShopScreenState extends State<ShopScreen> {
               }
               final categories = grouped.keys.toList();
 
-              final popular = [...products]..sort((a, b) => b.rating.compareTo(a.rating));
+              final popular = [...products]..sort((a, b) => (b.updatedAt ?? DateTime(2000)).compareTo(a.updatedAt ?? DateTime(2000)));
               final popularItems = popular.take(8).toList();
 
               return CustomScrollView(

@@ -49,6 +49,7 @@ dependencies:
   # Toast & Assets
   fluttertoast: ^8.2.14
   image_picker: ^1.2.2
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:

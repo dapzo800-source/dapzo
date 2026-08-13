@@ -46,6 +46,7 @@ class DapzoApp extends StatelessWidget {
           AppColors.isDarkMode = appState.isDarkMode;
 
           return MaterialApp(
+            key: ValueKey(appState.isDarkMode),
             title: 'Dapzo',
             debugShowCheckedModeBanner: false,
             themeMode: appState.isDarkMode ? ThemeMode.dark : ThemeMode.light,

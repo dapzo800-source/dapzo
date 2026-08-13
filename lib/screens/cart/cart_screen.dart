@@ -5,6 +5,7 @@ import '../../theme/app_text_styles.dart';
 import '../../services/cart_service.dart';
 import '../../utils/constants.dart';
 import '../../widgets/recommended_combos_section.dart';
+import '../../state/app_state.dart';
 import 'checkout_screen.dart';
 
 /// Cart screen — Multi-shop grouping support with shop subtotals & grand total.
@@ -277,6 +278,7 @@ class _MeatRecommendationBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        context.read<AppState>().setMode('meat');
         Navigator.of(context).popUntil((route) => route.isFirst);
       },
       child: Container(

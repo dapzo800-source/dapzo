@@ -48,10 +48,10 @@ class ProductService {
     // ------------------------------------------------------------
 
     if (category != null && category.isNotEmpty) {
-      query = query.where(
-        'category',
-        isEqualTo: category,
-      );
+      query = query.where(Filter.or(
+        Filter('category', isEqualTo: category),
+        Filter('categoryName', isEqualTo: category),
+      ));
     }
 
     // ------------------------------------------------------------

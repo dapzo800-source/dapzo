@@ -333,6 +333,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget _buildMeatRecommendation(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        context.read<AppState>().setMode('meat');
         Navigator.of(context).popUntil((route) => route.isFirst);
       },
       child: Container(

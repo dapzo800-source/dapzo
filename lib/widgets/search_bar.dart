@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
@@ -85,6 +86,61 @@ class _DapzoSearchBarState extends State<DapzoSearchBar>
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
 
     _focusNode.addListener(_onFocusChange);
+    _startTypewriterAnimation();
+  }
+
+  // Typewriter Animation
+  final List<String> _hints = [
+    'Search for chicken biriyani...',
+    'Search for burger...',
+    'Search for pizza...',
+    'Search for fresh meat...',
+  ];
+  int _currentHintIndex = 0;
+  String _currentHint = '';
+  int _charIndex = 0;
+  bool _isDeleting = false;
+  Timer? _typewriterTimer;
+
+  void _startTypewriterAnimation() {
+    const typeSpeed = Duration(milliseconds: 100);
+    const deleteSpeed = Duration(milliseconds: 50);
+    const delayBetweenHints = Duration(seconds: 2);
+
+    _typewriterTimer = Timer.periodic(typeSpeed, (timer) {
+      if (!mounted) return;
+
+      final targetHint = _hints[_currentHintIndex];
+
+      setState(() {
+        if (!_isDeleting) {
+          // Typing
+          if (_charIndex < targetHint.length) {
+            _currentHint = targetHint.substring(0, _charIndex + 1);
+            _charIndex++;
+          } else {
+            // Wait before deleting
+            _isDeleting = true;
+            timer.cancel();
+            Future.delayed(delayBetweenHints, () {
+              if (mounted) _startTypewriterAnimation();
+            });
+          }
+        } else {
+          // Deleting
+          if (_charIndex > 0) {
+            _currentHint = targetHint.substring(0, _charIndex - 1);
+            _charIndex--;
+          } else {
+            // Move to next hint
+            _isDeleting = false;
+            _currentHintIndex = (_currentHintIndex + 1) % _hints.length;
+            timer.cancel();
+            if (mounted) _startTypewriterAnimation();
+          }
+        }
+      });
+    });
   }
 
   void _onFocusChange() {
@@ -305,6 +361,7 @@ class _DapzoSearchBarState extends State<DapzoSearchBar>
 
   @override
   void dispose() {
+    _typewriterTimer?.cancel();
     _focusNode.removeListener(_onFocusChange);
     _focusNode.dispose();
     _overlayEntry?.remove();
@@ -338,7 +395,7 @@ class _DapzoSearchBarState extends State<DapzoSearchBar>
           },
           style: AppTextStyles.body,
           decoration: InputDecoration(
-            hintText: widget.hint,
+            hintText: _currentHint.isEmpty ? widget.hint : _currentHint,
             hintStyle: AppTextStyles.supporting,
             prefixIcon: Icon(Icons.search, color: AppColors.textSecondary),
             border: InputBorder.none,
