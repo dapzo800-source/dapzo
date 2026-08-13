@@ -9,6 +9,7 @@ class DapzoSearchBar extends StatefulWidget {
   final String hint;
   final VoidCallback? onTap;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
   final bool readOnly;
   final TextEditingController? controller;
   final bool showRecommendations;
@@ -18,6 +19,7 @@ class DapzoSearchBar extends StatefulWidget {
     this.hint = 'Search food or meat',
     this.onTap,
     this.onChanged,
+    this.onSubmitted,
     this.readOnly = false,
     this.controller,
     this.showRecommendations = true,
@@ -250,11 +252,13 @@ class _DapzoSearchBarState extends State<DapzoSearchBar>
                             children: recommendations.map((item) {
                               return GestureDetector(
                                 onTap: () {
-                                  _controller.text = item['label']!;
+                                  final label = item['label']!;
+                                  _controller.text = label;
                                   _controller.selection =
                                       TextSelection.collapsed(
                                           offset: _controller.text.length);
-                                  widget.onChanged?.call(item['label']!);
+                                  widget.onChanged?.call(label);
+                                  widget.onSubmitted?.call(label);
                                   _hideRecommendationOverlay();
                                 },
                                 child: Container(
@@ -318,6 +322,7 @@ class _DapzoSearchBarState extends State<DapzoSearchBar>
                                     TextSelection.collapsed(
                                         offset: _controller.text.length);
                                 widget.onChanged?.call(pick);
+                                widget.onSubmitted?.call(pick);
                                 _hideRecommendationOverlay();
                               },
                               borderRadius: BorderRadius.circular(8),
@@ -385,6 +390,10 @@ class _DapzoSearchBarState extends State<DapzoSearchBar>
           focusNode: _focusNode,
           readOnly: widget.readOnly,
           onTap: widget.onTap,
+          onSubmitted: (text) {
+            _hideRecommendationOverlay();
+            widget.onSubmitted?.call(text);
+          },
           onChanged: (text) {
             widget.onChanged?.call(text);
             if (text.isNotEmpty) {

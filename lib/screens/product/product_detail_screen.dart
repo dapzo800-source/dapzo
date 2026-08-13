@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -8,6 +10,7 @@ import '../../models/product_model.dart';
 import '../../models/cart_item_model.dart';
 import '../../services/product_service.dart';
 import '../../services/cart_service.dart';
+import '../../services/favorites_service.dart';
 
 /// Product detail page — built to mirror [ShopScreen]'s exact visual
 /// language rather than invent a new one:
@@ -189,7 +192,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                 ),
                                 Row(
                                   children: [
-                                    _CircleIconButton(icon: Icons.share_rounded, onTap: () {}),
+                                    _CircleIconButton(
+                                      icon: Icons.share_rounded,
+                                      onTap: () {
+                                        Share.share(
+                                          'Check out "${product.name}" on Dapzo for ₹${product.price.toStringAsFixed(0)}! Download Dapzo for fresh food and meat delivery.',
+                                          subject: product.name,
+                                        );
+                                      },
+                                    ),
                                     const SizedBox(width: 8),
                                     _CircleIconButton(
                                       icon: _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,

@@ -7,6 +7,7 @@ import '../../models/cart_item_model.dart';
 import '../../services/cart_service.dart';
 import '../../services/order_service.dart';
 import '../../services/payment_service.dart';
+import '../../services/location_service.dart';
 import '../../state/app_state.dart';
 import '../../utils/constants.dart';
 import '../location/select_location_screen.dart';
@@ -33,23 +34,41 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _applyCoupon(double subtotal) async {
     final code = _couponController.text.trim();
-    if (code.isEmpty) return;
-    final coupon = await _orderService.validateCoupon(code, subtotal);
-    if (!mounted) return;
-
-    if (coupon == null) {
+    if (code.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid or inapplicable coupon')),
+        const SnackBar(content: Text('Please enter a coupon code')),
       );
       return;
     }
 
-    setState(() {
-      _appliedCoupon = code.toUpperCase();
-      final percent = (coupon['discountPercent'] ?? 0).toDouble();
-      final flat = (coupon['discountFlat'] ?? 0).toDouble();
-      _discount = percent > 0 ? subtotal * percent / 100 : flat;
-    });
+    final result = await _orderService.validateCouponDetails(code, subtotal);
+    if (!mounted) return;
+
+    if (result['valid'] == true) {
+      final double calculatedDiscount = (result['discountAmount'] as num).toDouble();
+      setState(() {
+        _appliedCoupon = result['code'] as String;
+        _discount = calculatedDiscount;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Coupon applied! You saved ₹${calculatedDiscount.toStringAsFixed(0)}'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } else {
+      final String reason = result['reason'] ?? 'Invalid coupon code';
+      setState(() {
+        _appliedCoupon = null;
+        _discount = 0.0;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(reason),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   Future<void> _placeOrder(double total) async {
@@ -71,22 +90,48 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    // Service Area Validation
+    final addr = appState.selectedAddress!;
+    final locationService = LocationService();
+    final isServiceable = await locationService.checkServiceability(
+      area: addr.area,
+      latitude: addr.latitude,
+      longitude: addr.longitude,
+    );
+
+    if (!isServiceable && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Delivery is not available in your area.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     setState(() => _placing = true);
 
     try {
       String? gatewayTxnId;
+      String paymentStatus = 'pending';
       final checkoutRefId = 'chk_${DateTime.now().millisecondsSinceEpoch}_${uid.substring(0, uid.length > 5 ? 5 : uid.length)}';
 
       if (_method == _PaymentMethod.online) {
-        final session = await _paymentService.createPaymentSession(
-          orderId: 'pending',
+        final paymentRes = await _paymentService.processPayment(
           amount: total,
-          userId: uid,
+          orderId: checkoutRefId,
+          customerPhone: addr.phone,
+          customerEmail: appState.user?.email ?? '',
         );
-        gatewayTxnId = session['sessionId'] as String?;
+
+        if (paymentRes['success'] != true) {
+          throw Exception(paymentRes['error'] ?? 'Online payment processing was cancelled or failed.');
+        }
+
+        gatewayTxnId = paymentRes['transactionId'] as String?;
+        paymentStatus = 'pending'; // Requires gateway webhook/callback for final paid mark
       }
 
-      final selectedAddr = appState.selectedAddress!;
       final primaryShopId = cart.items.isNotEmpty ? cart.items.first.shopId : '';
       final primaryShopName = cart.items.isNotEmpty ? cart.items.first.shopName : 'Dapzo Partner Shop';
 
@@ -99,16 +144,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         tax: total - cart.subtotal - AppConstants.deliveryChargeDefault + _discount,
         total: total,
         paymentMethod: _method == _PaymentMethod.cod ? 'cod' : 'online',
-        addressId: selectedAddr.id,
+        paymentStatus: paymentStatus,
+        addressId: addr.id,
         shopId: primaryShopId,
         shopName: primaryShopName,
-        deliveryAddress: selectedAddr.toMap(),
+        deliveryAddress: addr.toMap(),
         couponCode: _appliedCoupon,
         gatewayTransactionId: gatewayTxnId,
         checkoutReferenceId: checkoutRefId,
       );
 
-      // Cart cleared ONLY on backend success
+      // Cart cleared ONLY on order creation success
       cart.clear();
       if (!mounted) return;
 
@@ -144,7 +190,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final total = subtotal + delivery - _discount + tax;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Checkout')),
+      appBar: AppBar(
+        title: const Text('Checkout'),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => Navigator.maybePop(context),
+              )
+            : null,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

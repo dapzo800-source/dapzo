@@ -1,180 +1,114 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../models/product_model.dart';
 import '../models/cart_item_model.dart';
+import '../services/product_service.dart';
 import '../services/cart_service.dart';
+import '../state/app_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
-/// Data model for recommended items & combo deals in the cart screen.
-class RecommendedOption {
-  final String id;
-  final String title;
-  final String subtitle;
-  final double price;
-  final double? originalPrice;
-  final String imageUrl;
-  final bool isCombo;
-  final String? badgeText;
-  final List<String>? includedItems;
-
-  const RecommendedOption({
-    required this.id,
-    required this.title,
-    required this.subtitle,
-    required this.price,
-    this.originalPrice,
-    required this.imageUrl,
-    this.isCombo = false,
-    this.badgeText,
-    this.includedItems,
-  });
-}
-
+/// Dynamic "Recommended for You" section using ONLY real Firestore products
+/// from the existing `products` collection (`isActive == true` and `isAvailable == true`).
 class RecommendedCombosSection extends StatelessWidget {
-  const RecommendedCombosSection({super.key});
-
-  static const List<RecommendedOption> _options = [
-    // Combo Options
-    RecommendedOption(
-      id: 'combo_biryani_meal',
-      title: 'Mega Biryani Combo',
-      subtitle: 'Biryani + Drink + Dessert',
-      price: 349,
-      originalPrice: 420,
-      imageUrl: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500',
-      isCombo: true,
-      badgeText: 'SAVE ₹71',
-      includedItems: ['Chicken Biryani (1 Plate)', 'Thums Up (500ml)', 'Gulab Jamun (2 pcs)'],
-    ),
-    RecommendedOption(
-      id: 'combo_meat_feast',
-      title: 'Meat Feast Combo',
-      subtitle: 'Chicken + Mutton Pack',
-      price: 699,
-      originalPrice: 799,
-      imageUrl: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=500',
-      isCombo: true,
-      badgeText: 'SAVE ₹100',
-      includedItems: ['500g Fresh Chicken', '500g Mutton Curry Cut', 'Biryani Masala Pack'],
-    ),
-    RecommendedOption(
-      id: 'combo_starter_pack',
-      title: 'Starter & Drink Combo',
-      subtitle: 'Kabab + Dip + Cold Drink',
-      price: 279,
-      originalPrice: 330,
-      imageUrl: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=500',
-      isCombo: true,
-      badgeText: 'POPULAR',
-      includedItems: ['Chicken Tikka (8 pcs)', 'Garlic Dip', 'Coca-Cola (500ml)'],
-    ),
-    // Recommended Single Items
-    RecommendedOption(
-      id: 'rec_thumsup',
-      title: 'Thums Up (500ml)',
-      subtitle: 'Chilled soft drink',
-      price: 40,
-      imageUrl: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500',
-      isCombo: false,
-    ),
-    RecommendedOption(
-      id: 'rec_raita_extra',
-      title: 'Extra Raita & Salan',
-      subtitle: 'Perfect biryani pairing',
-      price: 30,
-      imageUrl: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=500',
-      isCombo: false,
-    ),
-    RecommendedOption(
-      id: 'rec_gulab_jamun',
-      title: 'Gulab Jamun (2 Pcs)',
-      subtitle: 'Hot & soft dessert',
-      price: 60,
-      imageUrl: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500',
-      isCombo: false,
-    ),
-  ];
+  final String? shopId;
+  const RecommendedCombosSection({super.key, this.shopId});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Row(
-            children: [
-              Icon(Icons.stars_rounded, color: AppColors.primary, size: 22),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Recommended for You',
-                  style: AppTextStyles.sectionHeading.copyWith(fontSize: 17),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Combos & Add-ons',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
+    final productService = ProductService();
+    final appState = context.watch<AppState>();
+    final mode = appState.mode;
+
+    final targetShopId = shopId ?? (appState.servingShopId);
+
+    return StreamBuilder<List<ProductModel>>(
+      stream: productService.streamProducts(
+        mode: mode,
+        shopId: targetShopId,
+        limit: 20,
+      ),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink(); // Hide section if no existing products match
+        }
+
+        var products = snapshot.data!;
+
+        // Sort deterministically by rating/ratingCount if available
+        products.sort((a, b) {
+          if (b.rating != a.rating) {
+            return b.rating.compareTo(a.rating);
+          }
+          return b.ratingCount.compareTo(a.ratingCount);
+        });
+
+        // Limit to top 8 recommendations
+        final recommendedProducts = products.take(8).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.stars_rounded, color: AppColors.primary, size: 22),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Recommended for You',
+                      style: AppTextStyles.sectionHeading.copyWith(fontSize: 17),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 235,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _options.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final option = _options[index];
-              return _RecommendedCard(option: option);
-            },
-          ),
-        ),
-      ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 230,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: recommendedProducts.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final product = recommendedProducts[index];
+                  return _RecommendedProductCard(product: product);
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
-class _RecommendedCard extends StatelessWidget {
-  final RecommendedOption option;
+class _RecommendedProductCard extends StatelessWidget {
+  final ProductModel product;
 
-  const _RecommendedCard({required this.option});
+  const _RecommendedProductCard({required this.product});
 
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartService>();
 
-    // Check if this item/combo is already in cart
     final existingItem = cart.items.cast<CartItemModel?>().firstWhere(
-          (item) => item?.productId == option.id,
+          (item) => item?.productId == product.id,
           orElse: () => null,
         );
 
     final isInCart = existingItem != null;
 
     return Container(
-      width: 165,
+      width: 160,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: option.isCombo ? AppColors.primary.withValues(alpha: 0.4) : AppColors.divider,
-          width: option.isCombo ? 1.5 : 1.0,
-        ),
+        border: Border.all(color: AppColors.divider),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -186,40 +120,49 @@ class _RecommendedCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image Header with Badge
+          // Product Image Header
           Stack(
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
-                child: Image.network(
-                  option.imageUrl,
+                child: SizedBox(
                   height: 95,
                   width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 95,
-                    color: AppColors.surfaceVariant,
-                    child: Icon(Icons.fastfood, color: AppColors.textSecondary),
+                  child: CachedNetworkImage(
+                    imageUrl: product.imageUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => Container(
+                      height: 95,
+                      color: AppColors.surfaceVariant,
+                      child: Icon(Icons.fastfood, color: AppColors.textSecondary),
+                    ),
                   ),
                 ),
               ),
-              if (option.badgeText != null)
+              if (product.rating >= 4.0)
                 Positioned(
                   top: 6,
                   left: 6,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                     decoration: BoxDecoration(
-                      color: option.isCombo ? AppColors.primary : AppColors.textDark,
+                      color: AppColors.success,
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text(
-                      option.badgeText!,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.white,
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          product.rating.toStringAsFixed(1),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.white,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.star_rounded, color: AppColors.white, size: 10),
+                      ],
                     ),
                   ),
                 ),
@@ -234,14 +177,14 @@ class _RecommendedCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    option.title,
+                    product.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.productName.copyWith(fontSize: 13),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    option.subtitle,
+                    product.description.isNotEmpty ? product.description : product.category,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.supporting.copyWith(fontSize: 11),
@@ -252,23 +195,9 @@ class _RecommendedCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (option.originalPrice != null)
-                              Text(
-                                '₹${option.originalPrice!.toStringAsFixed(0)}',
-                                style: AppTextStyles.caption.copyWith(
-                                  decoration: TextDecoration.lineThrough,
-                                  color: AppColors.textHint,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            Text(
-                              '₹${option.price.toStringAsFixed(0)}',
-                              style: AppTextStyles.price.copyWith(fontSize: 13),
-                            ),
-                          ],
+                        child: Text(
+                          '₹${product.price.toStringAsFixed(0)}',
+                          style: AppTextStyles.price.copyWith(fontSize: 13),
                         ),
                       ),
                       // Add Button
@@ -286,32 +215,14 @@ class _RecommendedCard extends StatelessWidget {
                             elevation: 0,
                           ),
                           onPressed: () {
-                            if (isInCart) {
+                            if (existingItem != null) {
                               cart.incrementQty(existingItem.lineKey);
                             } else {
-                              final newItem = CartItemModel(
-                                productId: option.id,
-                                name: option.title,
-                                imageUrl: option.imageUrl,
-                                mode: option.isCombo ? 'combo' : 'food',
-                                unitPrice: option.price,
-                                quantity: 1,
-                              );
-                              cart.addItem(newItem);
+                              cart.addItem(CartItemModel.fromProduct(product));
                             }
-
-                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Added "${option.title}" to cart!'),
-                                duration: const Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: AppColors.textDark,
-                              ),
-                            );
                           },
                           child: Text(
-                            isInCart ? 'ADDED (${existingItem.quantity})' : 'ADD',
+                            existingItem != null ? 'ADD (${existingItem.quantity})' : 'ADD',
                             style: const TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.bold,

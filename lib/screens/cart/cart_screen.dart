@@ -147,6 +147,14 @@ class CartScreen extends StatelessWidget {
                                       icon: Icons.add,
                                       onTap: () => context.read<CartService>().incrementQty(item.lineKey),
                                     ),
+                                    const SizedBox(width: 8),
+                                    InkWell(
+                                      onTap: () => context.read<CartService>().removeItem(item.lineKey),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(4.0),
+                                        child: Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ],
@@ -212,13 +220,14 @@ class CartScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Your Cart'),
-        leading: Navigator.canPop(context)
+        automaticallyImplyLeading: false,
+        leading: Navigator.canPop(context) && !embedded
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                 onPressed: () => Navigator.maybePop(context),
               )
             : null,
+        title: const Text('Your Cart'),
       ),
       body: body,
       bottomNavigationBar: bottomBar,

@@ -578,7 +578,23 @@ class _HomeTabState extends State<_HomeTab> {
                       ),
                     ],
                   ),
-                  child: const DapzoSearchBar(readOnly: false),
+                  child: DapzoSearchBar(
+                    readOnly: false,
+                    onSubmitted: (query) {
+                      if (query.trim().isNotEmpty) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => CategoryScreen(
+                              mode: mode,
+                              categoryId: '',
+                              categoryName: query.toLowerCase().contains('birya') ? 'Biryani' : 'Search Results',
+                              searchQuery: query,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
                 ),
               ),
             ],

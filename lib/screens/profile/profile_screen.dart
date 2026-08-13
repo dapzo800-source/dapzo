@@ -24,8 +24,8 @@ class ProfileScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: !embedded,
-        leading: Navigator.canPop(context)
+        automaticallyImplyLeading: false,
+        leading: Navigator.canPop(context) && !embedded
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                 onPressed: () => Navigator.maybePop(context),

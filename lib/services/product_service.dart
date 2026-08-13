@@ -22,47 +22,29 @@ class ProductService {
   ///
   /// shopId:
   ///   Optional shop document ID.
+  /// Streams active and available products.
   Stream<List<ProductModel>> streamProducts({
     required String mode,
     String? category,
     String? shopId,
-    int limit = 30,
+    int limit = 60,
   }) {
     Query<Map<String, dynamic>> query = _db
         .collection('products')
-        .where(
-          'mode',
-          isEqualTo: mode,
-        )
-        .where(
-          'isActive',
-          isEqualTo: true,
-        )
-        .where(
-          'isAvailable',
-          isEqualTo: true,
-        );
+        .where('isActive', isEqualTo: true)
+        .where('isAvailable', isEqualTo: true);
 
-    // ------------------------------------------------------------
-    // CATEGORY FILTER
-    // ------------------------------------------------------------
+    if (shopId != null && shopId.isNotEmpty) {
+      query = query.where('shopId', isEqualTo: shopId);
+    } else if (mode.isNotEmpty) {
+      query = query.where('mode', isEqualTo: mode);
+    }
 
     if (category != null && category.isNotEmpty) {
       query = query.where(Filter.or(
         Filter('category', isEqualTo: category),
         Filter('categoryName', isEqualTo: category),
       ));
-    }
-
-    // ------------------------------------------------------------
-    // SHOP FILTER
-    // ------------------------------------------------------------
-
-    if (shopId != null && shopId.isNotEmpty) {
-      query = query.where(
-        'shopId',
-        isEqualTo: shopId,
-      );
     }
 
     return query
@@ -72,12 +54,23 @@ class ProductService {
           (snapshot) {
             return snapshot.docs
                 .map(
-                  (document) =>
-                      ProductModel.fromFirestore(document),
+                  (document) => ProductModel.fromFirestore(document),
                 )
                 .toList();
           },
         );
+  }
+
+  /// Explicit stream for Shop Details page
+  Stream<List<ProductModel>> streamShopProducts(String shopId) {
+    return _db
+        .collection('products')
+        .where('shopId', isEqualTo: shopId)
+        .where('isActive', isEqualTo: true)
+        .where('isAvailable', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => ProductModel.fromFirestore(doc)).toList());
   }
 
   // ============================================================

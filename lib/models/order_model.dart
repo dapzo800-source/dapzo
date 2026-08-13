@@ -43,6 +43,8 @@ class OrderModel {
   final String id;
   final String orderCode; // "DZ1025"
   final String userId;
+  final String shopId;
+  final String shopName;
   final List<CartItemModel> items;
   final double subtotal;
   final double deliveryCharge;
@@ -53,6 +55,11 @@ class OrderModel {
   final String paymentStatus; // "pending" | "paid" | "failed"
   final OrderStatus status;
   final String addressId;
+  final Map<String, dynamic> deliveryAddress;
+  final String? deliveryPartnerId;
+  final String? deliveryPartnerName;
+  final String? deliveryPartnerPhone;
+  final String? deliveryOtp;
   final String? couponCode;
   final DateTime? createdAt;
 
@@ -60,6 +67,8 @@ class OrderModel {
     required this.id,
     required this.orderCode,
     required this.userId,
+    required this.shopId,
+    required this.shopName,
     required this.items,
     required this.subtotal,
     required this.deliveryCharge,
@@ -70,6 +79,11 @@ class OrderModel {
     required this.paymentStatus,
     required this.status,
     required this.addressId,
+    this.deliveryAddress = const {},
+    this.deliveryPartnerId,
+    this.deliveryPartnerName,
+    this.deliveryPartnerPhone,
+    this.deliveryOtp,
     this.couponCode,
     this.createdAt,
   });
@@ -84,13 +98,20 @@ class OrderModel {
       return null;
     }
 
+    final parsedItems = (data['items'] as List<dynamic>? ?? [])
+        .map((e) => CartItemModel.fromMap(Map<String, dynamic>.from(e)))
+        .toList();
+
+    final primaryShopId = data['shopId'] ?? (parsedItems.isNotEmpty ? parsedItems.first.shopId : '');
+    final primaryShopName = data['shopName'] ?? (parsedItems.isNotEmpty ? parsedItems.first.shopName : 'Dapzo Partner Shop');
+
     return OrderModel(
       id: doc.id,
       orderCode: data['orderCode'] ?? data['orderNumber'] ?? doc.id,
       userId: data['userId'] ?? data['customerId'] ?? '',
-      items: (data['items'] as List<dynamic>? ?? [])
-          .map((e) => CartItemModel.fromMap(Map<String, dynamic>.from(e)))
-          .toList(),
+      shopId: primaryShopId,
+      shopName: primaryShopName,
+      items: parsedItems,
       subtotal: (data['subtotal'] ?? 0).toDouble(),
       deliveryCharge: (data['deliveryCharge'] ?? 0).toDouble(),
       discount: (data['discount'] ?? 0).toDouble(),
@@ -100,6 +121,11 @@ class OrderModel {
       paymentStatus: data['paymentStatus'] ?? 'pending',
       status: OrderStatusX.fromString(data['status'] ?? 'placed'),
       addressId: data['addressId'] ?? '',
+      deliveryAddress: Map<String, dynamic>.from(data['deliveryAddress'] ?? {}),
+      deliveryPartnerId: data['deliveryPartnerId'] ?? data['driverId'],
+      deliveryPartnerName: data['deliveryPartnerName'] ?? data['driverName'],
+      deliveryPartnerPhone: data['deliveryPartnerPhone'] ?? data['driverPhone'],
+      deliveryOtp: data['deliveryOtp'] ?? data['otp'],
       couponCode: data['couponCode'],
       createdAt: parseDate(data['createdAt']),
     );

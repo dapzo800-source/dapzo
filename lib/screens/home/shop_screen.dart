@@ -55,14 +55,10 @@ class _ShopScreenState extends State<ShopScreen> {
       body: Stack(
         children: [
           StreamBuilder<List<ProductModel>>(
-            stream: _productService.streamProducts(
-              mode: mode,
-              shopId: shopId,
-              limit: 100,
-            ),
+            stream: _productService.streamShopProducts(shopId),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                debugPrint('streamProducts error for shopId=$shopId: ${snapshot.error}');
+                debugPrint('streamShopProducts error for shopId=$shopId: ${snapshot.error}');
                 return CustomScrollView(
                   slivers: [
                     SliverAppBar(
@@ -108,7 +104,7 @@ class _ShopScreenState extends State<ShopScreen> {
 
               final Map<String, List<ProductModel>> grouped = {};
               for (final p in products) {
-                grouped.putIfAbsent(p.category, () => []).add(p);
+                grouped.putIfAbsent(p.category.isNotEmpty ? p.category : 'General', () => []).add(p);
               }
               final categories = grouped.keys.toList();
 
@@ -117,7 +113,7 @@ class _ShopScreenState extends State<ShopScreen> {
 
               return CustomScrollView(
                 slivers: [
-                  // ── Hero Image + Floating Icons ─────────────────────────────
+                  // ── Hero Image + Top Navigation ─────────────────────────────
                   SliverToBoxAdapter(
                     child: Stack(
                       children: [
@@ -149,18 +145,10 @@ class _ShopScreenState extends State<ShopScreen> {
                                   icon: Icons.arrow_back_ios_new_rounded,
                                   onTap: () => Navigator.of(context).maybePop(),
                                 ),
-                                Row(
-                                  children: [
-                                    _CircleIconButton(icon: Icons.share_rounded, onTap: () {}),
-                                    const SizedBox(width: 8),
-                                    _CircleIconButton(
-                                      icon: _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                      iconColor: _isFavorite ? AppColors.error : null,
-                                      onTap: () => setState(() => _isFavorite = !_isFavorite),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _CircleIconButton(icon: Icons.more_horiz_rounded, onTap: () {}),
-                                  ],
+                                _CircleIconButton(
+                                  icon: _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                  iconColor: _isFavorite ? AppColors.error : null,
+                                  onTap: () => setState(() => _isFavorite = !_isFavorite),
                                 ),
                               ],
                             ),

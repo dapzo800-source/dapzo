@@ -204,37 +204,52 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFD32F2F),
+      backgroundColor: const Color(0xFF9E0B0F),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 32,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Image.asset(
+                  'assets/images/app_logo.png',
+                  width: 140,
+                  height: 140,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Text(
+                    'DAPZO',
+                    style: AppTextStyles.heading.copyWith(
+                      color: AppColors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               Text(
                 'DAPZO',
                 style: AppTextStyles.heading.copyWith(
                   color: AppColors.white,
-                  fontSize: 36,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 4,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 3,
                 ),
               ),
-
-              const SizedBox(height: 10),
-
+              const SizedBox(height: 6),
               Text(
-                'Food • Meat • Delivery',
+                'FRESH • TASTY • DELIVERED',
                 style: AppTextStyles.supporting.copyWith(
-                  color: AppColors.white.withOpacity(0.9),
-                  letterSpacing: 1,
+                  color: AppColors.white.withValues(alpha: 0.9),
+                  fontSize: 12,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-
-              const SizedBox(height: 40),
-
+              const SizedBox(height: 36),
               if (_checking)
                 const SizedBox(
                   height: 28,
@@ -244,7 +259,6 @@ class _SplashScreenState extends State<SplashScreen> {
                     color: AppColors.white,
                   ),
                 ),
-
               if (!_checking && _error != null) ...[
                 Text(
                   _error!,
@@ -253,9 +267,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     color: AppColors.white,
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 ElevatedButton(
                   onPressed: _bootstrap,
                   child: const Text('Retry'),
