@@ -2,12 +2,19 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/shop_model.dart';
 
-/// Handles device location + delivery-zone matching.
-/// The client-side check here is for UX only — the backend (Cloud Function
-/// or the order-creation transaction) MUST re-validate before accepting
-/// an order, per spec section 29.
+/// Handles device location + delivery-zone matching (including KGF, Bangarapet, etc.).
 class LocationService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  static const List<String> supportedDeliveryAreas = [
+    'KGF (Kolar Gold Fields)',
+    'Bangarapet',
+    'Robertsonpet',
+    'Oorgaum',
+    'Marikuppam',
+    'Champion Reefs',
+    'Kolar',
+  ];
 
   Future<Position> getCurrentPosition() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -33,6 +40,13 @@ class LocationService {
 
   double distanceInKm(double lat1, double lon1, double lat2, double lon2) {
     return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) / 1000;
+  }
+
+  bool isAreaServiceable(String areaName) {
+    final lower = areaName.toLowerCase();
+    return supportedDeliveryAreas.any(
+      (area) => area.toLowerCase().contains(lower) || lower.contains(area.toLowerCase().split(' ')[0]),
+    );
   }
 
   /// Returns the nearest active shop that covers the given coordinates,

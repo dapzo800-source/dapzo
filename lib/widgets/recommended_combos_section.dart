@@ -106,11 +106,14 @@ class RecommendedCombosSection extends StatelessWidget {
             children: [
               Icon(Icons.stars_rounded, color: AppColors.primary, size: 22),
               const SizedBox(width: 8),
-              Text(
-                'Recommended for You',
-                style: AppTextStyles.sectionHeading.copyWith(fontSize: 17),
+              Expanded(
+                child: Text(
+                  'Recommended for You',
+                  style: AppTextStyles.sectionHeading.copyWith(fontSize: 17),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -130,7 +133,7 @@ class RecommendedCombosSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         SizedBox(
-          height: 220,
+          height: 235,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: _options.length,
@@ -248,23 +251,25 @@ class _RecommendedCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (option.originalPrice != null)
-                            Text(
-                              '₹${option.originalPrice!.toStringAsFixed(0)}',
-                              style: AppTextStyles.caption.copyWith(
-                                decoration: TextDecoration.lineThrough,
-                                color: AppColors.textHint,
-                                fontSize: 10,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (option.originalPrice != null)
+                              Text(
+                                '₹${option.originalPrice!.toStringAsFixed(0)}',
+                                style: AppTextStyles.caption.copyWith(
+                                  decoration: TextDecoration.lineThrough,
+                                  color: AppColors.textHint,
+                                  fontSize: 10,
+                                ),
                               ),
+                            Text(
+                              '₹${option.price.toStringAsFixed(0)}',
+                              style: AppTextStyles.price.copyWith(fontSize: 13),
                             ),
-                          Text(
-                            '₹${option.price.toStringAsFixed(0)}',
-                            style: AppTextStyles.price.copyWith(fontSize: 14),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       // Add Button
                       SizedBox(
@@ -272,7 +277,9 @@ class _RecommendedCard extends StatelessWidget {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isInCart ? AppColors.success : AppColors.primary,
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -306,7 +313,7 @@ class _RecommendedCard extends StatelessWidget {
                           child: Text(
                             isInCart ? 'ADDED (${existingItem.quantity})' : 'ADD',
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.bold,
                               color: AppColors.white,
                             ),

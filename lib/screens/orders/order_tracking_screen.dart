@@ -22,7 +22,15 @@ class OrderTrackingScreen extends StatelessWidget {
     final orderService = OrderService();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Track Order')),
+      appBar: AppBar(
+        title: const Text('Track Order'),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => Navigator.maybePop(context),
+              )
+            : null,
+      ),
       body: StreamBuilder<OrderModel>(
         stream: orderService.streamOrder(orderId),
         builder: (context, snapshot) {
@@ -34,21 +42,101 @@ class OrderTrackingScreen extends StatelessWidget {
               ? -1
               : _steps.indexOf(order.status);
 
+          // Generate 4-digit Delivery OTP from order ID
+          final digitsOnly = order.id.replaceAll(RegExp(r'[^0-9]'), '');
+          final otpCode = (digitsOnly.length >= 4)
+              ? digitsOnly.substring(0, 4)
+              : '4829';
+
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              Text('Order #${order.orderCode}', style: AppTextStyles.heading.copyWith(fontSize: 20)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Order #${order.orderCode}', style: AppTextStyles.heading.copyWith(fontSize: 20)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      order.status.label.toUpperCase(),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Delivery Handover OTP Card
+              if (order.status != OrderStatus.delivered && order.status != OrderStatus.cancelled)
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.shield_rounded, color: AppColors.primary, size: 28),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Delivery Handover OTP',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              otpCode,
+                              style: AppTextStyles.heading.copyWith(
+                                fontSize: 24,
+                                letterSpacing: 4,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Share with rider upon delivery',
+                              style: AppTextStyles.caption.copyWith(fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 24),
+
               if (order.status == OrderStatus.cancelled)
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppColors.error.withOpacity(0.08),
+                    color: AppColors.error.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.cancel_outlined, color: AppColors.error),
+                      const Icon(Icons.cancel_outlined, color: AppColors.error),
                       const SizedBox(width: 10),
                       Text('This order was cancelled', style: AppTextStyles.body.copyWith(color: AppColors.error)),
                     ],
@@ -103,7 +191,7 @@ class OrderTrackingScreen extends StatelessWidget {
                   }),
                 ),
               const Divider(height: 32),
-              Text('Payment', style: AppTextStyles.sectionHeading.copyWith(fontSize: 15)),
+              Text('Payment Details', style: AppTextStyles.sectionHeading.copyWith(fontSize: 15)),
               const SizedBox(height: 8),
               Text(
                 order.paymentMethod == 'cod' ? 'Cash on Delivery' : 'Online Payment',

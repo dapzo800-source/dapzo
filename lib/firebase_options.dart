@@ -3,17 +3,9 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
-///
-/// Example:
-/// ```dart
-/// import 'firebase_options.dart';
-/// // ...
-/// await Firebase.initializeApp(
-///   options: DefaultFirebaseOptions.currentPlatform,
-/// );
-/// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -30,8 +22,7 @@ class DefaultFirebaseOptions {
         return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for linux - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
+          'DefaultFirebaseOptions have not been configured for linux.',
         );
       default:
         throw UnsupportedError(
@@ -40,47 +31,34 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDumXdGJJ9nWDPRzxQCdg-maQh7mMDWBFc',
-    appId: '1:782695805227:web:5afc864651934ce969956e',
-    messagingSenderId: '782695805227',
-    projectId: 'dapzo-prod',
-    authDomain: 'dapzo-prod.firebaseapp.com',
-    storageBucket: 'dapzo-prod.firebasestorage.app',
-    measurementId: 'G-8T7EP6L1RX',
-  );
+  static FirebaseOptions get web => FirebaseOptions(
+        apiKey: dotenv.env['FIREBASE_API_KEY_WEB'] ?? '',
+        appId: dotenv.env['FIREBASE_APP_ID_WEB'] ?? '',
+        messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '',
+        projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? '',
+        authDomain: '${dotenv.env['FIREBASE_PROJECT_ID'] ?? ''}.firebaseapp.com',
+        storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? '',
+        measurementId: 'G-8T7EP6L1RX',
+      );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyA_TfkHdDnCyITmMeOmLGLZw91ivTHkzGU',
-    appId: '1:782695805227:android:ce3c8b6296262e2469956e',
-    messagingSenderId: '782695805227',
-    projectId: 'dapzo-prod',
-    storageBucket: 'dapzo-prod.firebasestorage.app',
-  );
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBbr9yz-H_Y8TxhP-21T5V4DRuTeL26aK4',
-    appId: '1:782695805227:ios:50d38e347a05f77b69956e',
-    messagingSenderId: '782695805227',
-    projectId: 'dapzo-prod',
-    storageBucket: 'dapzo-prod.firebasestorage.app',
-    iosBundleId: 'com.example.dapzo',
-  );
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBbr9yz-H_Y8TxhP-21T5V4DRuTeL26aK4',
-    appId: '1:782695805227:ios:50d38e347a05f77b69956e',
-    messagingSenderId: '782695805227',
-    projectId: 'dapzo-prod',
-    storageBucket: 'dapzo-prod.firebasestorage.app',
-    iosBundleId: 'com.example.dapzo',
-  );
+  static FirebaseOptions get android => FirebaseOptions(
+        apiKey: dotenv.env['FIREBASE_API_KEY_ANDROID'] ?? '',
+        appId: dotenv.env['FIREBASE_APP_ID_ANDROID'] ?? '',
+        messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '',
+        projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? '',
+        storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? '',
+      );
 
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDumXdGJJ9nWDPRzxQCdg-maQh7mMDWBFc',
-    appId: '1:782695805227:web:72537c7d29f100e269956e',
-    messagingSenderId: '782695805227',
-    projectId: 'dapzo-prod',
-    authDomain: 'dapzo-prod.firebaseapp.com',
-    storageBucket: 'dapzo-prod.firebasestorage.app',
-    measurementId: 'G-DP9PYDV926',
-  );
+  static FirebaseOptions get ios => FirebaseOptions(
+        apiKey: dotenv.env['FIREBASE_API_KEY_IOS'] ?? '',
+        appId: dotenv.env['FIREBASE_APP_ID_IOS'] ?? '',
+        messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '',
+        projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? '',
+        storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? '',
+        iosBundleId: 'com.example.dapzo',
+      );
+
+  static FirebaseOptions get macos => ios;
+
+  static FirebaseOptions get windows => web;
 }

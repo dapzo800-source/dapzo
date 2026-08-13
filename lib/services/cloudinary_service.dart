@@ -1,22 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 /// Uploads images to Cloudinary using an UNSIGNED upload preset.
-/// No Cloudinary API secret is ever stored in the Flutter app — only the
-/// cloud name + a restricted unsigned preset configured in the Cloudinary
-/// dashboard (folder-scoped, size-limited).
 class CloudinaryService {
-  // TODO: replace with your real Cloudinary cloud name (find it at the top
-  // of your Cloudinary dashboard — looks like 'dxyz123abc'). Never put the
-  // API secret here; only the cloud name and unsigned preset name belong
-  // in client code.
-  static const String cloudName = 'dxyz123abc';
-  static const String uploadPreset = 'meet_dapzo';
+  String get cloudName => dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
+  String get uploadPreset => dotenv.env['CLOUDINARY_UPLOAD_PRESET'] ?? '';
 
   /// [folder] should be one of: products, categories, shops, offers, profiles
   /// per the meet_dapzo/ Cloudinary structure.
   Future<String?> uploadImage(File imageFile, {required String folder}) async {
+    if (cloudName.isEmpty || uploadPreset.isEmpty) {
+      throw Exception('Cloudinary environment variables missing in .env file');
+    }
+
     final uri = Uri.parse(
       'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
     );
@@ -34,17 +32,13 @@ class CloudinaryService {
       return data['secure_url'] as String?;
     }
 
-    // Surface Cloudinary's actual error instead of silently returning null,
-    // so failures (bad cloud name, wrong/missing preset, preset not set to
-    // unsigned, folder rules, etc.) are visible instead of a generic
-    // "please try again".
     String message = 'Cloudinary upload failed (${response.statusCode})';
     try {
       final data = jsonDecode(body);
       final errMsg = data['error']?['message'];
       if (errMsg != null) message = '$message: $errMsg';
     } catch (_) {
-      // Body wasn't JSON — fall back to the generic message above.
+      // Body wasn't JSON
     }
     throw Exception(message);
   }

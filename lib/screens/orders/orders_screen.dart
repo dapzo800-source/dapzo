@@ -7,7 +7,7 @@ import '../../services/order_service.dart';
 import 'order_tracking_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
-  final bool embedded; // true when shown as a bottom-nav tab (no back button)
+  final bool embedded; // true when shown as a bottom-nav tab
   const OrdersScreen({super.key, this.embedded = false});
 
   @override
@@ -46,6 +46,12 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: !widget.embedded,
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => Navigator.maybePop(context),
+              )
+            : null,
         title: const Text('My Orders'),
         bottom: TabBar(
           controller: _tabController,

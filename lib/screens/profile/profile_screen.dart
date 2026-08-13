@@ -12,8 +12,7 @@ import 'favorites_screen.dart';
 import 'offers_screen.dart';
 import 'notifications_screen.dart';
 
-/// Profile screen — deliberately excludes Wallet, Refer & Earn, and any
-/// Google account references per spec.
+/// Profile screen — Customer account options and settings.
 class ProfileScreen extends StatelessWidget {
   final bool embedded;
   const ProfileScreen({super.key, this.embedded = false});
@@ -23,24 +22,33 @@ class ProfileScreen extends StatelessWidget {
     final user = context.watch<AppState>().user;
 
     return Scaffold(
-      appBar: AppBar(automaticallyImplyLeading: !embedded, title: const Text('Profile')),
+      appBar: AppBar(
+        automaticallyImplyLeading: !embedded,
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => Navigator.maybePop(context),
+              )
+            : null,
+        title: const Text('Profile'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           GestureDetector(
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ProfileSetupScreen(isEditing: true)),
+              MaterialPageRoute(builder: (_) => ProfileSetupScreen(isEditing: true)),
             ),
             child: Row(
               children: [
                 CircleAvatar(
                   radius: 32,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   backgroundImage: (user?.profileImage.isNotEmpty ?? false)
                       ? NetworkImage(user!.profileImage)
                       : null,
                   child: (user?.profileImage.isEmpty ?? true)
-                      ? Icon(Icons.person, color: AppColors.primary, size: 32)
+                      ? const Icon(Icons.person, color: AppColors.primary, size: 32)
                       : null,
                 ),
                 const SizedBox(width: 16),
@@ -65,7 +73,7 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.edit_outlined,
             label: 'Edit Profile',
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ProfileSetupScreen(isEditing: true)),
+              MaterialPageRoute(builder: (_) => ProfileSetupScreen(isEditing: true)),
             ),
           ),
           _MenuTile(
@@ -145,10 +153,6 @@ class ProfileScreen extends StatelessWidget {
 
               await AuthService().signOut();
               if (context.mounted) {
-                // AppState.user (and selectedAddress) previously stayed
-                // populated after Firebase sign-out, since only Firebase
-                // was signed out here — clear it so a stale profile/address
-                // from the old session can't leak into the next login.
                 context.read<AppState>().clearUserData();
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const OnboardingScreen()),

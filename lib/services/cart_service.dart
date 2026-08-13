@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/cart_item_model.dart';
 
 /// In-memory cart with ChangeNotifier so the UI reacts instantly.
-/// Cart is NOT written to Firestore until checkout creates the order.
+/// Supports multi-shop cart items grouped by shop name.
 class CartService extends ChangeNotifier {
   final Map<String, CartItemModel> _items = {}; // keyed by lineKey
 
@@ -12,6 +12,26 @@ class CartService extends ChangeNotifier {
 
   double get subtotal =>
       _items.values.fold(0, (sum, item) => sum + item.totalPrice);
+
+  /// Returns items grouped by Shop Name for multi-shop cart display.
+  Map<String, List<CartItemModel>> get itemsGroupedByShop {
+    final Map<String, List<CartItemModel>> grouped = {};
+    for (final item in _items.values) {
+      final name = item.shopName.isNotEmpty ? item.shopName : 'Dapzo Partner Shop';
+      if (!grouped.containsKey(name)) {
+        grouped[name] = [];
+      }
+      grouped[name]!.add(item);
+    }
+    return grouped;
+  }
+
+  /// Returns subtotal for a specific shop name
+  double shopSubtotal(String shopName) {
+    return _items.values
+        .where((i) => (i.shopName.isNotEmpty ? i.shopName : 'Dapzo Partner Shop') == shopName)
+        .fold(0, (sum, item) => sum + item.totalPrice);
+  }
 
   void addItem(CartItemModel item) {
     final key = item.lineKey;

@@ -12,17 +12,7 @@ import '../../widgets/product_list_card.dart';
 import '../../widgets/animated_cart_bar.dart';
 import '../product/product_detail_screen.dart';
 
-/// Full shop page showing all products from a single shop, grouped by
-/// category — hero header, veg badge, info block, delivery banner, and
-/// pill category tabs.
-///
-/// Typography here follows one consistent scale:
-///  - Shop name: 26 / w800 — the single largest, boldest text on the page.
-///  - Section headings ("Recommended for you", category names): 18 / w800.
-///  - Body/meta text (cuisine line, delivery info): 13–14 / w500-w600.
-///  - Captions (chips, ratings count): 12 / w600.
-/// Spacing follows an 8px rhythm (8 / 12 / 16 / 20 / 24) so gaps feel
-/// intentional rather than arbitrary.
+/// Full shop page showing all products from a single shop, grouped by category.
 class ShopScreen extends StatefulWidget {
   final Map<String, dynamic> shop;
 
@@ -65,447 +55,451 @@ class _ShopScreenState extends State<ShopScreen> {
       body: Stack(
         children: [
           StreamBuilder<List<ProductModel>>(
-        stream: _productService.streamProducts(
-          mode: mode,
-          shopId: shopId,
-          limit: 100,
-        ),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            debugPrint('streamProducts error for shopId=$shopId: ${snapshot.error}');
-            return CustomScrollView(
-              slivers: [
-                SliverAppBar(
-                  pinned: true,
-                  backgroundColor: AppColors.white,
-                  foregroundColor: AppColors.textSecondary,
-                  title: Text(
-                    shopName,
-                    style: AppTextStyles.shopName.copyWith(fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.error_outline, size: 40, color: AppColors.textSecondary),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Unable to load products',
-                          style: AppTextStyles.sectionHeading.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${snapshot.error}',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.supporting.copyWith(fontSize: 13, height: 1.4),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }
-
-          final products = snapshot.data ?? [];
-
-          final Map<String, List<ProductModel>> grouped = {};
-          for (final p in products) {
-            grouped.putIfAbsent(p.category, () => []).add(p);
-          }
-          final categories = grouped.keys.toList();
-
-          final popular = [...products]..sort((a, b) => b.rating.compareTo(a.rating));
-          final popularItems = popular.take(8).toList();
-
-          return CustomScrollView(
-            slivers: [
-              // ── Hero Image + Floating Icons ─────────────────────────────
-              SliverToBoxAdapter(
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(0)),
-                      child: SizedBox(
-                        height: 240,
-                        width: double.infinity,
-                        child: imageUrl.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: imageUrl,
-                                fit: BoxFit.cover,
-                                errorWidget: (_, __, ___) => Container(
-                                  decoration: BoxDecoration(gradient: LinearGradient(colors: modeColors)),
-                                ),
-                              )
-                            : Container(
-                                decoration: BoxDecoration(gradient: LinearGradient(colors: modeColors)),
-                              ),
+            stream: _productService.streamProducts(
+              mode: mode,
+              shopId: shopId,
+              limit: 100,
+            ),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                debugPrint('streamProducts error for shopId=$shopId: ${snapshot.error}');
+                return CustomScrollView(
+                  slivers: [
+                    SliverAppBar(
+                      pinned: true,
+                      backgroundColor: AppColors.white,
+                      foregroundColor: AppColors.textSecondary,
+                      title: Text(
+                        shopName,
+                        style: AppTextStyles.shopName.copyWith(fontSize: 18, fontWeight: FontWeight.w700),
+                      ),
+                      leading: IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                        onPressed: () => Navigator.maybePop(context),
                       ),
                     ),
-                    SafeArea(
+                    SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            _CircleIconButton(
-                              icon: Icons.arrow_back_rounded,
-                              onTap: () => Navigator.of(context).maybePop(),
+                            Icon(Icons.error_outline, size: 40, color: AppColors.textSecondary),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Unable to load products',
+                              style: AppTextStyles.sectionHeading.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
                             ),
-                            Row(
-                              children: [
-                                _CircleIconButton(icon: Icons.share_rounded, onTap: () {}),
-                                const SizedBox(width: 8),
-                                _CircleIconButton(
-                                  icon: _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                  iconColor: _isFavorite ? AppColors.error : null,
-                                  onTap: () => setState(() => _isFavorite = !_isFavorite),
-                                ),
-                                const SizedBox(width: 8),
-                                _CircleIconButton(icon: Icons.more_horiz_rounded, onTap: () {}),
-                              ],
+                            const SizedBox(height: 8),
+                            Text(
+                              '${snapshot.error}',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.supporting.copyWith(fontSize: 13, height: 1.4),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    if (isPureVeg)
-                      Positioned(
-                        bottom: 0,
-                        left: 16,
-                        child: Transform.translate(
-                          offset: const Offset(0, 20),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: AppColors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.10),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.eco_rounded, size: 15, color: AppColors.success),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Pure Veg',
-                                  style: AppTextStyles.caption.copyWith(
-                                    fontSize: 12.5,
-                                    color: AppColors.success,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                   ],
-                ),
-              ),
+                );
+              }
 
-              // ── Shop Info Block ─────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              shopName,
-                              style: AppTextStyles.heading.copyWith(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.4,
-                                height: 1.15,
-                                color: AppColors.textDark,
-                              ),
-                            ),
-                          ),
-                          if (rating > 0) ...[
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.success,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        rating.toStringAsFixed(1),
-                                        style: AppTextStyles.badge.copyWith(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 3),
-                                      Icon(Icons.star_rounded, color: AppColors.white, size: 14),
-                                    ],
-                                  ),
-                                ),
-                                if (ratingCount > 0) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${_formatCount(ratingCount)} ratings',
-                                    style: AppTextStyles.caption.copyWith(
-                                      fontSize: 11.5,
-                                      color: AppColors.textSecondary,
+              final products = snapshot.data ?? [];
+
+              final Map<String, List<ProductModel>> grouped = {};
+              for (final p in products) {
+                grouped.putIfAbsent(p.category, () => []).add(p);
+              }
+              final categories = grouped.keys.toList();
+
+              final popular = [...products]..sort((a, b) => b.rating.compareTo(a.rating));
+              final popularItems = popular.take(8).toList();
+
+              return CustomScrollView(
+                slivers: [
+                  // ── Hero Image + Floating Icons ─────────────────────────────
+                  SliverToBoxAdapter(
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(0)),
+                          child: SizedBox(
+                            height: 240,
+                            width: double.infinity,
+                            child: imageUrl.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (_, __, ___) => Container(
+                                      decoration: BoxDecoration(gradient: LinearGradient(colors: modeColors)),
                                     ),
+                                  )
+                                : Container(
+                                    decoration: BoxDecoration(gradient: LinearGradient(colors: modeColors)),
                                   ),
-                                ],
+                          ),
+                        ),
+                        SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _CircleIconButton(
+                                  icon: Icons.arrow_back_ios_new_rounded,
+                                  onTap: () => Navigator.of(context).maybePop(),
+                                ),
+                                Row(
+                                  children: [
+                                    _CircleIconButton(icon: Icons.share_rounded, onTap: () {}),
+                                    const SizedBox(width: 8),
+                                    _CircleIconButton(
+                                      icon: _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                      iconColor: _isFavorite ? AppColors.error : null,
+                                      onTap: () => setState(() => _isFavorite = !_isFavorite),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _CircleIconButton(icon: Icons.more_horiz_rounded, onTap: () {}),
+                                  ],
+                                ),
                               ],
                             ),
-                          ],
-                        ],
-                      ),
-                      if (cuisine.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          isPureVeg ? '$cuisine • Pure Veg' : cuisine,
-                          style: AppTextStyles.supporting.copyWith(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textMedium,
                           ),
                         ),
-                      ],
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Icon(Icons.location_on_rounded, size: 15, color: AppColors.textSecondary),
-                          const SizedBox(width: 4),
-                          if (distanceKm != null) ...[
-                            Text(
-                              '${distanceKm.toStringAsFixed(1)} km',
-                              style: AppTextStyles.caption.copyWith(fontSize: 13, color: AppColors.textMedium),
-                            ),
-                            const SizedBox(width: 10),
-                            Text('•', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
-                            const SizedBox(width: 10),
-                          ],
-                          Icon(Icons.access_time_rounded, size: 15, color: AppColors.textSecondary),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$deliveryMin–$deliveryMax mins',
-                            style: AppTextStyles.caption.copyWith(fontSize: 13, color: AppColors.textMedium),
-                          ),
-                          const SizedBox(width: 10),
-                          Text('•', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Schedule for later',
-                            style: AppTextStyles.caption.copyWith(
-                              fontSize: 13,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: const [
-                          _FeatureChip(label: 'No packaging charges'),
-                          _FeatureChip(label: 'Frequently reordered'),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // ── Free Delivery Banner ─────────────────────────────
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.delivery_dining_rounded, color: AppColors.primary, size: 22),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Free Delivery above ₹$freeDeliveryAbove',
-                                style: AppTextStyles.body.copyWith(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textDark,
+                        if (isPureVeg)
+                          Positioned(
+                            bottom: 0,
+                            left: 16,
+                            child: Transform.translate(
+                              offset: const Offset(0, 20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.10),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.eco_rounded, size: 15, color: AppColors.success),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Pure Veg',
+                                      style: AppTextStyles.caption.copyWith(
+                                        fontSize: 12.5,
+                                        color: AppColors.success,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.1,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                            Text(
-                              'Offers',
-                              style: AppTextStyles.caption.copyWith(
-                                fontSize: 13,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 18),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ── Category Pill Tabs ──────────────────────────────────────
-              if (categories.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: _CategoryTabs(
-                    categories: categories,
-                    selected: _selectedCategory,
-                    onSelect: (cat) => setState(() {
-                      _selectedCategory = cat == _selectedCategory ? '' : cat;
-                    }),
-                  ),
-                ),
-
-              // ── Recommended For You ─────────────────────────────────────
-              if (_selectedCategory.isEmpty && popularItems.isNotEmpty) ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 12),
-                    child: Text(
-                      'Recommended for you',
-                      style: AppTextStyles.sectionHeading.copyWith(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final product = popularItems[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: ProductListCard(
-                            product: product,
-                            highlyReordered: product.rating >= 4.0,
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => ProductDetailScreen(productId: product.id),
-                              ),
-                            ),
-                            onAdd: () {
-                              context.read<CartService>().addItem(
-                                    CartItemModel.fromProduct(product),
-                                  );
-                            },
                           ),
-                        );
-                      },
-                      childCount: popularItems.length,
+                      ],
                     ),
                   ),
-                ),
-              ],
 
-              // ── Loading ───────────────────────────────────────────────
-              if (snapshot.connectionState == ConnectionState.waiting)
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 60),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                ),
-
-              // ── Empty ─────────────────────────────────────────────────
-              if (!snapshot.hasData ||
-                  (snapshot.hasData &&
-                      products.isEmpty &&
-                      snapshot.connectionState != ConnectionState.waiting))
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 60),
-                    child: Center(
-                      child: Text(
-                        'No products available yet',
-                        style: AppTextStyles.supporting.copyWith(fontSize: 14),
-                      ),
-                    ),
-                  ),
-                ),
-
-              // ── Products by Category ───────────────────────────────────
-              for (final category in categories) ...[
-                if (_selectedCategory.isEmpty || _selectedCategory == category) ...[
+                  // ── Shop Info Block ─────────────────────────────────────────
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 12),
-                      child: Text(
-                        category,
-                        style: AppTextStyles.sectionHeading.copyWith(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.2,
-                          color: AppColors.textDark,
+                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  shopName,
+                                  style: AppTextStyles.heading.copyWith(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.4,
+                                    height: 1.15,
+                                    color: AppColors.textDark,
+                                  ),
+                                ),
+                              ),
+                              if (rating > 0) ...[
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.success,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            rating.toStringAsFixed(1),
+                                            style: AppTextStyles.badge.copyWith(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 3),
+                                          const Icon(Icons.star_rounded, color: AppColors.white, size: 14),
+                                        ],
+                                      ),
+                                    ),
+                                    if (ratingCount > 0) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${_formatCount(ratingCount)} ratings',
+                                        style: AppTextStyles.caption.copyWith(
+                                          fontSize: 11.5,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                          if (cuisine.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              isPureVeg ? '$cuisine • Pure Veg' : cuisine,
+                              style: AppTextStyles.supporting.copyWith(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textMedium,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on_rounded, size: 15, color: AppColors.textSecondary),
+                              const SizedBox(width: 4),
+                              if (distanceKm != null) ...[
+                                Text(
+                                  '${distanceKm.toStringAsFixed(1)} km',
+                                  style: AppTextStyles.caption.copyWith(fontSize: 13, color: AppColors.textMedium),
+                                ),
+                                const SizedBox(width: 10),
+                                Text('•', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                                const SizedBox(width: 10),
+                              ],
+                              Icon(Icons.access_time_rounded, size: 15, color: AppColors.textSecondary),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$deliveryMin–$deliveryMax mins',
+                                style: AppTextStyles.caption.copyWith(fontSize: 13, color: AppColors.textMedium),
+                              ),
+                              const SizedBox(width: 10),
+                              Text('•', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Schedule for later',
+                                style: AppTextStyles.caption.copyWith(
+                                  fontSize: 13,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          const Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _FeatureChip(label: 'No packaging charges'),
+                              _FeatureChip(label: 'Frequently reordered'),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // ── Free Delivery Banner ─────────────────────────────
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.delivery_dining_rounded, color: AppColors.primary, size: 22),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Free Delivery above ₹$freeDeliveryAbove',
+                                    style: AppTextStyles.body.copyWith(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textDark,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  'Offers',
+                                  style: AppTextStyles.caption.copyWith(
+                                    fontSize: 13,
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 18),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // ── Category Pill Tabs ──────────────────────────────────────
+                  if (categories.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: _CategoryTabs(
+                        categories: categories,
+                        selected: _selectedCategory,
+                        onSelect: (cat) => setState(() {
+                          _selectedCategory = cat == _selectedCategory ? '' : cat;
+                        }),
+                      ),
+                    ),
+
+                  // ── Recommended For You ─────────────────────────────────────
+                  if (_selectedCategory.isEmpty && popularItems.isNotEmpty) ...[
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 22, 20, 12),
+                        child: Text(
+                          'Recommended for you',
+                          style: AppTextStyles.sectionHeading.copyWith(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                            color: AppColors.textDark,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final product = grouped[category]![index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: ProductListCard(
-                              product: product,
-                              highlyReordered: product.rating >= 4.0,
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => ProductDetailScreen(productId: product.id),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final product = popularItems[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: ProductListCard(
+                                product: product,
+                                highlyReordered: product.rating >= 4.0,
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => ProductDetailScreen(productId: product.id),
+                                  ),
                                 ),
+                                onAdd: () {
+                                  context.read<CartService>().addItem(
+                                        CartItemModel.fromProduct(product, shopName: shopName),
+                                      );
+                                },
                               ),
-                              onAdd: () {
-                                context.read<CartService>().addItem(
-                                      CartItemModel.fromProduct(product),
-                                    );
-                              },
-                            ),
-                          );
-                        },
-                        childCount: grouped[category]!.length,
+                            );
+                          },
+                          childCount: popularItems.length,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ],
+                  ],
 
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
-          );
-        },
+                  // ── Loading ───────────────────────────────────────────────
+                  if (snapshot.connectionState == ConnectionState.waiting)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 60),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ),
+
+                  // ── Empty ─────────────────────────────────────────────────
+                  if (!snapshot.hasData ||
+                      (snapshot.hasData &&
+                          products.isEmpty &&
+                          snapshot.connectionState != ConnectionState.waiting))
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 60),
+                        child: Center(
+                          child: Text(
+                            'No products available yet',
+                            style: AppTextStyles.supporting.copyWith(fontSize: 14),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // ── Products by Category ───────────────────────────────────
+                  for (final category in categories) ...[
+                    if (_selectedCategory.isEmpty || _selectedCategory == category) ...[
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 22, 20, 12),
+                          child: Text(
+                            category,
+                            style: AppTextStyles.sectionHeading.copyWith(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final product = grouped[category]![index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: ProductListCard(
+                                  product: product,
+                                  highlyReordered: product.rating >= 4.0,
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => ProductDetailScreen(productId: product.id),
+                                    ),
+                                  ),
+                                  onAdd: () {
+                                    context.read<CartService>().addItem(
+                                          CartItemModel.fromProduct(product, shopName: shopName),
+                                        );
+                                  },
+                                ),
+                              );
+                            },
+                            childCount: grouped[category]!.length,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
+              );
+            },
           ),
           const AnimatedCartBar(),
         ],
@@ -519,10 +513,6 @@ class _ShopScreenState extends State<ShopScreen> {
     return '$n';
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CIRCLE ICON BUTTON
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _CircleIconButton extends StatelessWidget {
   final IconData icon;
@@ -545,15 +535,11 @@ class _CircleIconButton extends StatelessWidget {
             BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 6, offset: const Offset(0, 2)),
           ],
         ),
-        child: Icon(icon, size: 19, color: iconColor ?? AppColors.textDark),
+        child: Icon(icon, size: 18, color: iconColor ?? AppColors.textDark),
       ),
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FEATURE CHIP
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _FeatureChip extends StatelessWidget {
   final String label;
@@ -570,7 +556,7 @@ class _FeatureChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.check_circle_rounded, size: 14, color: AppColors.success),
+          const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.success),
           const SizedBox(width: 6),
           Text(
             label,
@@ -585,10 +571,6 @@ class _FeatureChip extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CATEGORY TABS
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _CategoryTabs extends StatelessWidget {
   final List<String> categories;

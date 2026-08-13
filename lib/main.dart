@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
@@ -11,6 +12,12 @@ import 'screens/auth/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint('dotenv load note: $e');
+  }
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -37,16 +44,16 @@ class DapzoApp extends StatelessWidget {
         builder: (context) {
           final appState = context.watch<AppState>();
           AppColors.isDarkMode = appState.isDarkMode;
-          
+
           return MaterialApp(
             title: 'Dapzo',
             debugShowCheckedModeBanner: false,
             themeMode: appState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            theme: AppTheme.light, // light uses dynamic logic inside Theme.dart
+            theme: AppTheme.light,
             darkTheme: AppTheme.light,
             home: const SplashScreen(),
           );
-        }
+        },
       ),
     );
   }
