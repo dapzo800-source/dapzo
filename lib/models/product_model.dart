@@ -79,8 +79,8 @@ class ProductModel {
       shopId: data['shopId'] ?? '',
       isAvailable: data['isAvailable'] ?? true,
       isActive: data['isActive'] ?? true,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      createdAt: _parseDate(data['createdAt']),
+      updatedAt: _parseDate(data['updatedAt']),
     );
   }
 
@@ -102,5 +102,11 @@ class ProductModel {
       'isActive': isActive,
       'updatedAt': FieldValue.serverTimestamp(),
     };
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 }

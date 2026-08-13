@@ -263,11 +263,6 @@ class _HomeTabState extends State<_HomeTab> {
               child: _FilterChips(appState: appState),
             ),
 
-          // ── Offers ───────────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: _OffersBanner(mode: mode, productService: _productService),
-          ),
-
           // ── Categories Header ────────────────────────────────────────────
           SliverToBoxAdapter(
             child: _SectionHeader(
@@ -328,8 +323,15 @@ class _HomeTabState extends State<_HomeTab> {
                   );
                 }
 
-                // Highest-rated shops first.
-                final sorted = [...popularShops]..sort((a, b) {
+                // Filter & Sort Shops
+                var sorted = [...popularShops];
+                if (appState.isNearAndFast) {
+                  sorted = sorted.where((s) {
+                    final time = (s['deliveryTime'] as num?)?.toInt() ?? 999;
+                    return time <= 30; // Assuming <=30 mins is fast
+                  }).toList();
+                }
+                sorted.sort((a, b) {
                     final ra = (a['rating'] as num?)?.toDouble() ?? 0.0;
                     final rb = (b['rating'] as num?)?.toDouble() ?? 0.0;
                     return rb.compareTo(ra);
@@ -629,6 +631,14 @@ class _FilterChips extends StatelessWidget {
             activeColor: const Color(0xFFF59E0B),
             onTap: appState.toggleRating4Plus,
           ),
+          const SizedBox(width: 8),
+          _FilterChip(
+            icon: Icons.timer_rounded,
+            label: 'Near & Fast',
+            isActive: appState.isNearAndFast,
+            activeColor: const Color(0xFFEF4444),
+            onTap: appState.toggleNearAndFast,
+          ),
           if (appState.hasActiveFilters) ...[
             const SizedBox(width: 8),
             GestureDetector(
@@ -752,14 +762,16 @@ class _ModeToggle extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _ModeChip(
-            label: '🍔  Food',
+            label: 'FOOD CRAVINGS',
+            imagePath: 'assets/images/food_hero.png',
             selected: selected == 'food',
             color: Colors.amber.shade700,
             onTap: () => onChanged('food'),
           ),
           const SizedBox(width: 16),
           _ModeChip(
-            label: '🥩  Meat',
+            label: 'MEAT CRAVINGS',
+            imagePath: 'assets/images/meat_hero.png',
             selected: selected == 'meat',
             color: AppColors.meatRed,
             onTap: () => onChanged('meat'),
@@ -772,12 +784,14 @@ class _ModeToggle extends StatelessWidget {
 
 class _ModeChip extends StatelessWidget {
   final String label;
+  final String imagePath;
   final bool selected;
   final Color color;
   final VoidCallback onTap;
 
   const _ModeChip({
     required this.label,
+    required this.imagePath,
     required this.selected,
     required this.color,
     required this.onTap,
@@ -789,33 +803,82 @@ class _ModeChip extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
+        height: 100,
         child: GestureDetector(
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: selected ? color : Colors.transparent,
-                width: 2,
+                width: selected ? 2.5 : 0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: selected ? color.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+                  color: selected ? color.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
-            child: Center(
-              child: Text(
-                label,
-                style: AppTextStyles.body.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: selected ? color : AppColors.textSecondary,
-                  fontSize: 15,
-                ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    imagePath,
+                    fit: BoxFit.cover,
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.2),
+                          Colors.black.withValues(alpha: 0.7),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: Text(
+                      label,
+                      style: AppTextStyles.heading.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        fontSize: 16,
+                        letterSpacing: 1.2,
+                        shadows: [
+                          const Shadow(
+                            color: Colors.black54,
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  if (selected)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

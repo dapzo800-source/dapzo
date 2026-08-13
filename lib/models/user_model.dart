@@ -32,12 +32,12 @@ class UserModel {
       phone: data['phone'] ?? '',
       name: data['name'] ?? '',
       email: data['email'] ?? '',
-      dateOfBirth: (data['dateOfBirth'] as Timestamp?)?.toDate(),
+      dateOfBirth: _parseDate(data['dateOfBirth']),
       profileImage: data['profileImage'] ?? '',
       role: data['role'] ?? 'customer',
       isActive: data['isActive'] ?? true,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      createdAt: _parseDate(data['createdAt']),
+      updatedAt: _parseDate(data['updatedAt']),
     );
   }
 
@@ -52,4 +52,10 @@ class UserModel {
         'isActive': isActive,
         'updatedAt': FieldValue.serverTimestamp(),
       };
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
 }

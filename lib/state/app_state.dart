@@ -28,6 +28,7 @@ class AppState extends ChangeNotifier {
   bool _isVegMode = false;
   bool _isUnder199 = false;
   bool _isRating4Plus = false;
+  bool _isNearAndFast = false;
 
   // ============================================================
   // GETTERS
@@ -46,9 +47,10 @@ class AppState extends ChangeNotifier {
   bool get isVegMode => _isVegMode;
   bool get isUnder199 => _isUnder199;
   bool get isRating4Plus => _isRating4Plus;
+  bool get isNearAndFast => _isNearAndFast;
 
   /// True when any food-mode filter is active.
-  bool get hasActiveFilters => _isVegMode || _isUnder199 || _isRating4Plus;
+  bool get hasActiveFilters => _isVegMode || _isUnder199 || _isRating4Plus || _isNearAndFast;
 
   // ============================================================
   // USER
@@ -79,6 +81,7 @@ class AppState extends ChangeNotifier {
       _isVegMode = false;
       _isUnder199 = false;
       _isRating4Plus = false;
+      _isNearAndFast = false;
     }
 
     notifyListeners();
@@ -135,10 +138,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleNearAndFast() {
+    _isNearAndFast = !_isNearAndFast;
+    notifyListeners();
+  }
+
   void clearFilters() {
     _isVegMode = false;
     _isUnder199 = false;
     _isRating4Plus = false;
+    _isNearAndFast = false;
     notifyListeners();
   }
 
