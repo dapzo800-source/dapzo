@@ -211,21 +211,18 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Image.asset(
-                  'assets/images/app_logo.png',
-                  width: 140,
-                  height: 140,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Text(
-                    'DAPZO',
-                    style: AppTextStyles.heading.copyWith(
-                      color: AppColors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 4,
-                    ),
+              Image.asset(
+                'assets/images/app_logo.png',
+                width: 140,
+                height: 140,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Text(
+                  'DAPZO',
+                  style: AppTextStyles.heading.copyWith(
+                    color: AppColors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 4,
                   ),
                 ),
               ),

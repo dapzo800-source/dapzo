@@ -44,7 +44,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   late final Animation<Offset> _barSlide;
 
   int _quantity = 1;
-  bool _isFavorite = false;
   bool _barRevealed = false;
 
   @override
@@ -201,11 +200,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                         );
                                       },
                                     ),
-                                    const SizedBox(width: 8),
-                                    _CircleIconButton(
-                                      icon: _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                      iconColor: _isFavorite ? AppColors.error : null,
-                                      onTap: () => setState(() => _isFavorite = !_isFavorite),
+                                    StreamBuilder<bool>(
+                                      stream: FavoritesService().streamIsFavorite(
+                                        FirebaseAuth.instance.currentUser?.uid ?? '',
+                                        product.id,
+                                      ),
+                                      builder: (context, snapshot) {
+                                        final isFav = snapshot.data ?? false;
+                                        return _CircleIconButton(
+                                          icon: isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                          iconColor: isFav ? AppColors.error : null,
+                                          onTap: () async {
+                                            final uid = FirebaseAuth.instance.currentUser?.uid;
+                                            if (uid == null || uid.isEmpty) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Please sign in to add favorites')),
+                                              );
+                                              return;
+                                            }
+                                            await FavoritesService().toggleFavorite(uid, product.id);
+                                          },
+                                        );
+                                      },
                                     ),
                                   ],
                                 ),

@@ -1506,12 +1506,16 @@ class _ActiveOrderBanner extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              Text(
-                                'Order #${activeOrder.orderCode}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
+                              Expanded(
+                                child: Text(
+                                  'Order #${activeOrder.orderCode}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               const SizedBox(width: 8),

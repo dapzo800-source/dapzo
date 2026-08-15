@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -19,7 +20,7 @@ class OrderTrackingScreen extends StatefulWidget {
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   final _orderService = OrderService();
   final _locationService = LocationService();
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
 
   static const _steps = [
     OrderStatus.placed,
@@ -29,12 +30,6 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     OrderStatus.outForDelivery,
     OrderStatus.delivered,
   ];
-
-  @override
-  void dispose() {
-    _mapController?.dispose();
-    super.dispose();
-  }
 
   Future<void> _callRider(String? phone) async {
     if (phone == null || phone.trim().isEmpty) return;
@@ -68,8 +63,15 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       body: StreamBuilder<OrderModel>(
         stream: _orderService.streamOrder(widget.orderId),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error loading order: ${snapshot.error}'),
+            );
           }
 
           final order = snapshot.data ??
@@ -99,15 +101,21 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
           final otpCode = order.deliveryOtp ??
               ((order.id.replaceAll(RegExp(r'[^0-9]'), '').length >= 4)
-                  ? order.id.replaceAll(RegExp(r'[^0-9]'), '').substring(0, 4)
+                  ? order.id
+                      .replaceAll(RegExp(r'[^0-9]'), '')
+                      .substring(0, 4)
                   : '4829');
 
-          final customerLat = (order.deliveryAddress['latitude'] as num?)?.toDouble() ?? 12.9568;
-          final customerLng = (order.deliveryAddress['longitude'] as num?)?.toDouble() ?? 78.2711;
+          final customerLat =
+              (order.deliveryAddress['latitude'] as num?)?.toDouble() ??
+                  12.9568;
+          final customerLng =
+              (order.deliveryAddress['longitude'] as num?)?.toDouble() ??
+                  78.2711;
 
           return Column(
             children: [
-              // ── Top Section: Live Interactive Google Map with Rider Navigation ──
+              // ── Top Section: Live Map ──
               Expanded(
                 flex: 5,
                 child: _buildMapSection(order, customerLat, customerLng),
@@ -119,7 +127,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(24)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.08),
@@ -131,7 +140,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(20),
                     children: [
-                      // Header Row (Safe flex layout, prevents overflow)
+                      // Header Row
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -141,14 +150,16 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                               children: [
                                 Text(
                                   'Order #${order.orderCode}',
-                                  style: AppTextStyles.heading.copyWith(fontSize: 18),
+                                  style: AppTextStyles.heading
+                                      .copyWith(fontSize: 18),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   order.shopName,
-                                  style: AppTextStyles.supporting.copyWith(fontSize: 12),
+                                  style: AppTextStyles.supporting
+                                      .copyWith(fontSize: 12),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -157,7 +168,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
@@ -175,7 +187,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       const SizedBox(height: 16),
 
                       // Assigned Delivery Partner Card
-                      if (order.deliveryPartnerId != null && order.deliveryPartnerId!.isNotEmpty) ...[
+                      if (order.deliveryPartnerId != null &&
+                          order.deliveryPartnerId!.isNotEmpty) ...[
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -187,8 +200,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 22,
-                                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                                child: const Icon(Icons.two_wheeler_rounded, color: AppColors.primary, size: 24),
+                                backgroundColor:
+                                    AppColors.primary.withValues(alpha: 0.15),
+                                child: const Icon(Icons.two_wheeler_rounded,
+                                    color: AppColors.primary, size: 24),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -196,33 +211,42 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      order.deliveryPartnerName ?? 'Dapzo Delivery Partner',
-                                      style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+                                      order.deliveryPartnerName ??
+                                          'Dapzo Delivery Partner',
+                                      style: AppTextStyles.body.copyWith(
+                                          fontWeight: FontWeight.w700),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Text(
-                                      order.status == OrderStatus.outForDelivery
+                                      order.status ==
+                                              OrderStatus.outForDelivery
                                           ? 'On the way to your location 🛵'
                                           : 'Assigned & heading to shop',
-                                      style: AppTextStyles.caption.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
+                                      style: AppTextStyles.caption.copyWith(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
                               ),
-                              if (order.deliveryPartnerPhone != null && order.deliveryPartnerPhone!.isNotEmpty)
+                              if (order.deliveryPartnerPhone != null &&
+                                  order.deliveryPartnerPhone!.isNotEmpty)
                                 InkWell(
-                                  onTap: () => _callRider(order.deliveryPartnerPhone),
+                                  onTap: () =>
+                                      _callRider(order.deliveryPartnerPhone),
                                   borderRadius: BorderRadius.circular(20),
                                   child: Container(
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: Colors.green.withValues(alpha: 0.15),
+                                      color:
+                                          Colors.green.withValues(alpha: 0.15),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.phone_rounded, color: Colors.green, size: 20),
+                                    child: const Icon(Icons.phone_rounded,
+                                        color: Colors.green, size: 20),
                                   ),
                                 ),
                             ],
@@ -231,24 +255,29 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         const SizedBox(height: 14),
                       ],
 
-                      // Delivery Handover OTP Card
-                      if (order.status != OrderStatus.delivered && order.status != OrderStatus.cancelled)
+                      // Delivery OTP Card
+                      if (order.status != OrderStatus.delivered &&
+                          order.status != OrderStatus.cancelled)
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                            border: Border.all(
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.2)),
                           ),
                           child: Row(
                             children: [
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.shield_rounded, color: AppColors.primary, size: 24),
+                                child: const Icon(Icons.shield_rounded,
+                                    color: AppColors.primary, size: 24),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -279,7 +308,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         ),
                       const SizedBox(height: 20),
 
-                      // Cancelled or Timeline
+                      // Timeline or Cancelled
                       if (order.status == OrderStatus.cancelled)
                         Container(
                           padding: const EdgeInsets.all(14),
@@ -289,10 +318,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.cancel_outlined, color: AppColors.error),
+                              const Icon(Icons.cancel_outlined,
+                                  color: AppColors.error),
                               const SizedBox(width: 10),
                               Expanded(
-                                child: Text('This order was cancelled', style: AppTextStyles.body.copyWith(color: AppColors.error)),
+                                child: Text('This order was cancelled',
+                                    style: AppTextStyles.body
+                                        .copyWith(color: AppColors.error)),
                               ),
                             ],
                           ),
@@ -313,16 +345,22 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                     children: [
                                       Icon(
                                         done
-                                            ? (isCurrent ? Icons.radio_button_checked : Icons.check_circle)
+                                            ? (isCurrent
+                                                ? Icons.radio_button_checked
+                                                : Icons.check_circle)
                                             : Icons.radio_button_unchecked,
-                                        color: done ? AppColors.primary : AppColors.divider,
+                                        color: done
+                                            ? AppColors.primary
+                                            : AppColors.divider,
                                         size: 20,
                                       ),
                                       if (!isLast)
                                         Expanded(
                                           child: Container(
                                             width: 2,
-                                            color: i < currentIndex ? AppColors.primary : AppColors.divider,
+                                            color: i < currentIndex
+                                                ? AppColors.primary
+                                                : AppColors.divider,
                                           ),
                                         ),
                                     ],
@@ -330,13 +368,18 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Padding(
-                                      padding: const EdgeInsets.only(bottom: 18),
+                                      padding:
+                                          const EdgeInsets.only(bottom: 18),
                                       child: Text(
                                         step.label,
                                         style: AppTextStyles.body.copyWith(
                                           fontSize: 13.5,
-                                          fontWeight: done ? FontWeight.w600 : FontWeight.w400,
-                                          color: done ? AppColors.textDark : AppColors.textSecondary,
+                                          fontWeight: done
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                          color: done
+                                              ? AppColors.textDark
+                                              : AppColors.textSecondary,
                                         ),
                                       ),
                                     ),
@@ -347,36 +390,49 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                           }),
                         ),
 
-                      // Items in Order Section
+                      // Items
                       if (order.items.isNotEmpty) ...[
                         const Divider(height: 24),
                         Text('Items Ordered (${order.items.length})',
-                            style: AppTextStyles.heading.copyWith(fontSize: 14)),
+                            style:
+                                AppTextStyles.heading.copyWith(fontSize: 14)),
                         const SizedBox(height: 10),
                         ...order.items.map((item) => Padding(
                               padding: const EdgeInsets.only(bottom: 8),
                               child: Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 7, vertical: 3),
                                     decoration: BoxDecoration(
                                       color: AppColors.surfaceVariant,
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text('${item.quantity}x',
-                                        style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w700)),
+                                        style: AppTextStyles.caption.copyWith(
+                                            fontWeight: FontWeight.w700)),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      item.name + (item.selectedWeight != null && item.selectedWeight!.isNotEmpty ? ' (${item.selectedWeight})' : ''),
-                                      style: AppTextStyles.body.copyWith(fontSize: 13, fontWeight: FontWeight.w500),
+                                      item.name +
+                                          (item.selectedWeight != null &&
+                                                  item.selectedWeight!
+                                                      .isNotEmpty
+                                              ? ' (${item.selectedWeight})'
+                                              : ''),
+                                      style: AppTextStyles.body.copyWith(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  Text('₹${item.totalPrice.toStringAsFixed(0)}',
-                                      style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700, fontSize: 13)),
+                                  Text(
+                                      '₹${item.totalPrice.toStringAsFixed(0)}',
+                                      style: AppTextStyles.body.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13)),
                                 ],
                               ),
                             )),
@@ -389,20 +445,26 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Payment Method', style: AppTextStyles.caption),
+                              Text('Payment Method',
+                                  style: AppTextStyles.caption),
                               Text(
-                                order.paymentMethod == 'cod' ? 'Cash on Delivery' : 'Online Payment',
-                                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                                order.paymentMethod == 'cod'
+                                    ? 'Cash on Delivery'
+                                    : 'Online Payment',
+                                style: AppTextStyles.body
+                                    .copyWith(fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('Order Total', style: AppTextStyles.caption),
+                              Text('Order Total',
+                                  style: AppTextStyles.caption),
                               Text(
                                 '₹${order.total.toStringAsFixed(0)}',
-                                style: AppTextStyles.heading.copyWith(fontSize: 18, color: AppColors.primary),
+                                style: AppTextStyles.heading.copyWith(
+                                    fontSize: 18, color: AppColors.primary),
                               ),
                             ],
                           ),
@@ -419,62 +481,96 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     );
   }
 
-  Widget _buildMapSection(OrderModel order, double custLat, double custLng) {
+  Widget _buildMapSection(
+      OrderModel order, double custLat, double custLng) {
     final partnerId = order.deliveryPartnerId;
 
-    // Stream real-time driver coordinates from Firestore collection `delivery_locations/{deliveryPartnerId}`
     return StreamBuilder<Map<String, dynamic>?>(
       stream: (partnerId != null && partnerId.isNotEmpty)
           ? _locationService.streamDeliveryPartnerLocation(partnerId)
           : Stream.value(null),
       builder: (context, locSnap) {
         final locData = locSnap.data;
-        final driverLat = (locData?['latitude'] as num?)?.toDouble() ?? (locData?['lat'] as num?)?.toDouble();
-        final driverLng = (locData?['longitude'] as num?)?.toDouble() ?? (locData?['lng'] as num?)?.toDouble();
+        final driverLat =
+            (locData?['latitude'] as num?)?.toDouble() ??
+            (locData?['lat'] as num?)?.toDouble();
+        final driverLng =
+            (locData?['longitude'] as num?)?.toDouble() ??
+            (locData?['lng'] as num?)?.toDouble();
 
-        final Set<Marker> markers = {
-          Marker(
-            markerId: const MarkerId('customer'),
-            position: LatLng(custLat, custLng),
-            infoWindow: const InfoWindow(title: 'Delivery Address'),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-          ),
-        };
-
-        if (driverLat != null && driverLng != null) {
-          markers.add(
-            Marker(
-              markerId: const MarkerId('driver'),
-              position: LatLng(driverLat, driverLng),
-              infoWindow: InfoWindow(
-                title: order.deliveryPartnerName ?? 'Delivery Partner',
-                snippet: order.status == OrderStatus.outForDelivery ? 'Out for delivery' : 'Assigned Driver',
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
-            ),
-          );
-        }
-
-        final initialTarget = (driverLat != null && driverLng != null)
+        final customerPoint = LatLng(custLat, custLng);
+        final driverPoint = (driverLat != null && driverLng != null)
             ? LatLng(driverLat, driverLng)
-            : LatLng(custLat, custLng);
+            : null;
+        final mapCenter = driverPoint ?? customerPoint;
+
+        final markers = <Marker>[
+          Marker(
+            point: customerPoint,
+            width: 44,
+            height: 44,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.home_rounded,
+                      color: Colors.white, size: 18),
+                ),
+              ],
+            ),
+          ),
+          if (driverPoint != null)
+            Marker(
+              point: driverPoint,
+              width: 44,
+              height: 44,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.two_wheeler_rounded,
+                    color: Colors.white, size: 18),
+              ),
+            ),
+        ];
 
         return Stack(
           children: [
-            GoogleMap(
-              initialCameraPosition: CameraPosition(target: initialTarget, zoom: 14.5),
-              markers: markers,
-              onMapCreated: (controller) => _mapController = controller,
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: false,
-              mapToolbarEnabled: false,
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: mapCenter,
+                initialZoom: 14.5,
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.all,
+                ),
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate:
+                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.dapzo.app',
+                  maxZoom: 19,
+                ),
+                MarkerLayer(markers: markers),
+              ],
             ),
+
+            // Status banner overlay
             Positioned(
               top: 12,
               left: 16,
               right: 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: AppColors.surface.withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(12),
@@ -512,6 +608,24 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+
+            // OSM attribution (required by OSM license)
+            Positioned(
+              bottom: 4,
+              right: 4,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  '© OpenStreetMap contributors',
+                  style: TextStyle(fontSize: 9, color: Colors.black54),
                 ),
               ),
             ),

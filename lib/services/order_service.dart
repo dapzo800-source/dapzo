@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -236,70 +236,90 @@ class OrderService {
     String? statusFilter,
   }) {
     final cleanUserId = userId.trim();
-    final currentAuthUser = FirebaseAuth.instance.currentUser;
-    final String authUid = currentAuthUser?.uid ?? '';
-    final String rawAuthPhone = currentAuthUser?.phoneNumber ?? '';
-    final String cleanAuthPhone = rawAuthPhone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanUserId.isEmpty) {
+      return Stream.value(<OrderModel>[]);
+    }
 
-    return _db.collection('orders').snapshots().map((snapshot) {
-      final orders = <OrderModel>[];
+    // Use a StreamController to merge two Firestore streams:
+    // one by 'userId' and one by 'customerId'.
+    // Both are kept in sync; each update from either triggers a merged emit.
+    final controller = StreamController<List<OrderModel>>();
 
-      for (final doc in snapshot.docs) {
-        try {
-          final data = doc.data();
-          final String docUserId =
-              (data['userId'] ?? data['customerId'] ?? '').toString().trim();
-          final String rawDocPhone = (data['customerPhone'] ??
-                  data['phone'] ??
-                  (data['deliveryAddress'] is Map
-                      ? data['deliveryAddress']['phone']
-                      : '') ??
-                  '')
-              .toString()
-              .trim();
-          final String cleanDocPhone =
-              rawDocPhone.replaceAll(RegExp(r'[^0-9]'), '');
+    List<OrderModel> byUserIdList = [];
+    List<OrderModel> byCustomerIdList = [];
 
-          final bool isMatch = (cleanUserId.isNotEmpty && docUserId == cleanUserId) ||
-              (authUid.isNotEmpty && docUserId == authUid) ||
-              (cleanAuthPhone.isNotEmpty &&
-                  cleanDocPhone.isNotEmpty &&
-                  (cleanAuthPhone == cleanDocPhone ||
-                      cleanAuthPhone.endsWith(cleanDocPhone) ||
-                      cleanDocPhone.endsWith(cleanAuthPhone)));
-
-          if (isMatch) {
-            final order = OrderModel.fromFirestore(doc);
-
-            if (statusFilter == null ||
-                order.status.name == statusFilter) {
-              orders.add(order);
-            }
-          }
-        } catch (e, stackTrace) {
-          if (kDebugMode) {
-            debugPrint(
-              'Failed to parse order ${doc.id}: $e',
-            );
-            debugPrint('$stackTrace');
-          }
-        }
+    void emit() {
+      if (controller.isClosed) return;
+      final seen = <String>{};
+      final merged = <OrderModel>[];
+      for (final o in [...byUserIdList, ...byCustomerIdList]) {
+        if (seen.add(o.id)) merged.add(o);
       }
-
-      orders.sort((a, b) {
+      merged.sort((a, b) {
         final dateA =
-            a.createdAt ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-
+            a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
         final dateB =
-            b.createdAt ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-
+            b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
         return dateB.compareTo(dateA);
       });
+      controller.add(merged);
+    }
 
-      return orders;
-    });
+    final sub1 = _db
+        .collection('orders')
+        .where('userId', isEqualTo: cleanUserId)
+        .snapshots()
+        .listen(
+      (snap) {
+        byUserIdList = _parseDocs(snap.docs, statusFilter);
+        emit();
+      },
+      onError: (e) {
+        if (kDebugMode) debugPrint('streamUserOrders userId stream error: $e');
+      },
+    );
+
+    final sub2 = _db
+        .collection('orders')
+        .where('customerId', isEqualTo: cleanUserId)
+        .snapshots()
+        .listen(
+      (snap) {
+        byCustomerIdList = _parseDocs(snap.docs, statusFilter);
+        emit();
+      },
+      onError: (e) {
+        if (kDebugMode) debugPrint('streamUserOrders customerId stream error: $e');
+      },
+    );
+
+    controller.onCancel = () {
+      sub1.cancel();
+      sub2.cancel();
+    };
+
+    return controller.stream;
+  }
+
+  List<OrderModel> _parseDocs(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    String? statusFilter,
+  ) {
+    final orders = <OrderModel>[];
+    for (final doc in docs) {
+      try {
+        final order = OrderModel.fromFirestore(doc);
+        if (statusFilter == null || order.status.name == statusFilter) {
+          orders.add(order);
+        }
+      } catch (e, stackTrace) {
+        if (kDebugMode) {
+          debugPrint('Failed to parse order ${doc.id}: $e');
+          debugPrint('$stackTrace');
+        }
+      }
+    }
+    return orders;
   }
 
   // ----------------------------------------------------------------

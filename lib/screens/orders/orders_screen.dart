@@ -905,6 +905,7 @@ class _OrderCard extends StatelessWidget {
 
                   style:
                       ElevatedButton.styleFrom(
+                    minimumSize: const Size(0, 36),
                     padding:
                         const EdgeInsets.symmetric(
                       horizontal: 14,

@@ -29,7 +29,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       Icons.ramen_dining_outlined,
       'Fresh Food\nDelivered Fast',
       'Discover delicious food from nearby shops.',
-      AppColors.foodOrange,
+      AppColors.primary,
     ),
     _OnboardData(
       Icons.kebab_dining,
