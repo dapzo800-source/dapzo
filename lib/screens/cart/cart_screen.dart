@@ -6,6 +6,7 @@ import '../../services/cart_service.dart';
 import '../../utils/constants.dart';
 import '../../widgets/recommended_combos_section.dart';
 import '../../state/app_state.dart';
+import '../home/home_screen.dart';
 import 'checkout_screen.dart';
 
 /// Cart screen — Multi-shop grouping support with shop subtotals & grand total.
@@ -182,6 +183,20 @@ class CartScreen extends StatelessWidget {
             ],
           );
 
+    final appBar = AppBar(
+      title: const Text('Cart'),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded),
+        onPressed: () {
+          if (embedded) {
+            context.findAncestorStateOfType<HomeScreenState>()?.goToTab(0);
+          } else {
+            Navigator.of(context).maybePop();
+          }
+        },
+      ),
+    );
+
     final bottomBar = cart.isEmpty
         ? null
         : Container(
@@ -219,16 +234,7 @@ class CartScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leading: Navigator.canPop(context) && !embedded
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                onPressed: () => Navigator.maybePop(context),
-              )
-            : null,
-        title: const Text('Your Cart'),
-      ),
+      appBar: appBar,
       body: body,
       bottomNavigationBar: bottomBar,
     );

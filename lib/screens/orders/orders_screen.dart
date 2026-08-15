@@ -11,6 +11,7 @@ import '../../models/cart_item_model.dart';
 import '../../models/order_model.dart';
 import '../../services/order_service.dart';
 import '../../state/app_state.dart';
+import '../home/home_screen.dart';
 import 'order_tracking_screen.dart';
 import '../home/home_screen.dart';
 
@@ -103,24 +104,24 @@ class _OrdersScreenState extends State<OrdersScreen>
       appBar: AppBar(
         automaticallyImplyLeading: false,
 
-        leading: !widget.embedded
-            ? IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 20,
-                ),
-                onPressed: () {
-                  if (Navigator.canPop(context)) {
-                    Navigator.pop(context);
-                  } else {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
-                      (route) => false,
-                    );
-                  }
-                },
-              )
-            : null,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            size: 20,
+          ),
+          onPressed: () {
+            if (widget.embedded) {
+              context.findAncestorStateOfType<HomeScreenState>()?.goToTab(0);
+            } else if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const HomeScreen()),
+                (route) => false,
+              );
+            }
+          },
+        ),
 
         title: const Text('My Orders'),
 

@@ -94,8 +94,9 @@ class _CategoryScreenState extends State<CategoryScreen> with SingleTickerProvid
               SliverAppBar(
                 pinned: true,
                 expandedHeight: 180,
-                backgroundColor: AppColors.surface,
+                backgroundColor: AppColors.primary, // Red background when collapsed
                 foregroundColor: AppColors.white,
+                centerTitle: true,
                 leading: IconButton(
                   icon: Container(
                     padding: const EdgeInsets.all(6),
@@ -108,7 +109,8 @@ class _CategoryScreenState extends State<CategoryScreen> with SingleTickerProvid
                   onPressed: () => Navigator.maybePop(context),
                 ),
                 flexibleSpace: FlexibleSpaceBar(
-                  titlePadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                  centerTitle: true,
+                  titlePadding: const EdgeInsets.only(bottom: 14),
                   title: Text(
                     titleText,
                     style: AppTextStyles.heading.copyWith(

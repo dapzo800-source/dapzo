@@ -31,16 +31,22 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
+class HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   int _navIndex = 0;
   bool _isNavVisible = true;
   Timer? _scrollIdleTimer;
   late final AnimationController _navAnimController;
   late final Animation<Offset> _navSlideAnim;
+
+  void goToTab(int index) {
+    if (mounted) {
+      setState(() => _navIndex = index);
+    }
+  }
 
   @override
   void initState() {

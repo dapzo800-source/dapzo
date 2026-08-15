@@ -398,6 +398,112 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     ),
                   ),
 
+                  // ── More from this Shop ──
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Text(
+                              'More from this Shop',
+                              style: AppTextStyles.sectionHeading,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            height: 280,
+                            child: StreamBuilder<List<ProductModel>>(
+                              stream: ProductService().streamProducts(shopId: product.shopId),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasError) {
+                                  return Center(child: Text('Error loading products', style: AppTextStyles.supporting));
+                                }
+                                if (!snapshot.hasData) {
+                                  return const Center(child: CircularProgressIndicator());
+                                }
+                                
+                                // Filter out current product
+                                final products = snapshot.data!.where((p) => p.id != product.id).toList();
+                                
+                                if (products.isEmpty) {
+                                  return Center(child: Text('No other items found', style: AppTextStyles.supporting));
+                                }
+
+                                return ListView.separated(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: products.length,
+                                  separatorBuilder: (_, __) => const SizedBox(width: 16),
+                                  itemBuilder: (context, index) {
+                                    final p = products[index];
+                                    return SizedBox(
+                                      width: 160,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          Navigator.of(context).pushReplacement(
+                                            MaterialPageRoute(builder: (_) => ProductDetailScreen(productId: p.id)),
+                                          );
+                                        },
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: AppColors.surface,
+                                            borderRadius: BorderRadius.circular(16),
+                                            border: Border.all(color: AppColors.divider),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              ClipRRect(
+                                                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                                child: Image.network(
+                                                  p.imageUrl,
+                                                  height: 120,
+                                                  width: double.infinity,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (_, __, ___) => Container(
+                                                    height: 120,
+                                                    color: AppColors.surfaceVariant,
+                                                    child: const Icon(Icons.fastfood, color: Colors.grey),
+                                                  ),
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.all(12),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      p.name,
+                                                      style: AppTextStyles.productName.copyWith(fontSize: 14),
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      '₹${p.price.toStringAsFixed(0)}',
+                                                      style: AppTextStyles.price.copyWith(fontSize: 14),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   const SliverToBoxAdapter(child: SizedBox(height: 140)),
                 ],
               ),
@@ -436,28 +542,37 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           ),
                           const SizedBox(width: 14),
                           Expanded(
-                            child: GestureDetector(
-                              onTap: () {
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: AppColors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              onPressed: () {
                                 final cartService = context.read<CartService>();
                                 for (var i = 0; i < _quantity; i++) {
                                   cartService.addItem(CartItemModel.fromProduct(product));
                                 }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'Add to cart · ₹${(product.price * _quantity).toStringAsFixed(0)}',
-                                    style: AppTextStyles.badge.copyWith(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.1,
-                                    ),
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('$_quantity item(s) added to cart'),
+                                    backgroundColor: AppColors.success,
+                                    behavior: SnackBarBehavior.floating,
+                                    duration: const Duration(seconds: 2),
                                   ),
+                                );
+                              },
+                              child: Text(
+                                'Add to cart · ₹${(product.price * _quantity).toStringAsFixed(0)}',
+                                style: AppTextStyles.badge.copyWith(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.white,
+                                  letterSpacing: 0.1,
                                 ),
                               ),
                             ),
