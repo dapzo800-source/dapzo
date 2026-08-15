@@ -13,12 +13,18 @@ class SettingsScreen extends StatelessWidget {
     final appState = context.watch<AppState>();
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        centerTitle: false,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          color: AppColors.textDark,
+          tooltip: 'Back',
           onPressed: () => Navigator.maybePop(context),
         ),
-        title: const Text('Settings'),
+        title: Text('Settings', style: AppTextStyles.heading.copyWith(fontSize: 18)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -27,8 +33,8 @@ class SettingsScreen extends StatelessWidget {
           Text(
             'APPEARANCE',
             style: AppTextStyles.caption.copyWith(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
               letterSpacing: 1.2,
               color: AppColors.textSecondary,
             ),
@@ -37,11 +43,12 @@ class SettingsScreen extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.divider),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -49,7 +56,7 @@ class SettingsScreen extends StatelessWidget {
             child: SwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
               ),
               secondary: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
@@ -77,7 +84,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               title: Text(
                 'Dark Mode',
-                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
               ),
               subtitle: Text(
                 appState.isDarkMode ? 'Dark theme is active' : 'Light theme is active',
@@ -85,7 +92,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               value: appState.isDarkMode,
               onChanged: (_) => appState.toggleDarkMode(),
-              activeColor: const Color(0xFF818CF8),
+              activeThumbColor: const Color(0xFF818CF8),
             ),
           ),
 
@@ -95,8 +102,8 @@ class SettingsScreen extends StatelessWidget {
           Text(
             'GENERAL',
             style: AppTextStyles.caption.copyWith(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
               letterSpacing: 1.2,
               color: AppColors.textSecondary,
             ),
@@ -105,11 +112,12 @@ class SettingsScreen extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.divider),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -119,7 +127,7 @@ class SettingsScreen extends StatelessWidget {
                 _SettingsTile(
                   icon: Icons.language_rounded,
                   label: 'Language',
-                  trailing: Text('English', style: AppTextStyles.caption),
+                  trailing: Text('English', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
                   onTap: () {},
                   isFirst: true,
                 ),
@@ -134,15 +142,16 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
 
           // ── App Version ─────────────────────────────────────────────
           Center(
             child: Text(
               'Dapzo v1.0.0',
               style: AppTextStyles.caption.copyWith(
-                color: AppColors.textHint,
+                color: AppColors.textSecondary,
                 fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -172,11 +181,11 @@ class _SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-          top: isFirst ? const Radius.circular(16) : Radius.zero,
-          bottom: isLast ? const Radius.circular(16) : Radius.zero,
+          top: isFirst ? const Radius.circular(18) : Radius.zero,
+          bottom: isLast ? const Radius.circular(18) : Radius.zero,
         ),
       ),
       leading: Container(
@@ -188,8 +197,8 @@ class _SettingsTile extends StatelessWidget {
         ),
         child: Icon(icon, color: AppColors.primary, size: 20),
       ),
-      title: Text(label, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500)),
-      trailing: trailing ?? Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+      title: Text(label, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600, fontSize: 14.5)),
+      trailing: trailing ?? Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 20),
       onTap: onTap,
     );
   }

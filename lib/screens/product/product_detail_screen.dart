@@ -186,7 +186,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 _CircleIconButton(
-                                  icon: Icons.arrow_back_rounded,
+                                  icon: Icons.arrow_back_ios_new_rounded,
                                   onTap: () => Navigator.of(context).maybePop(),
                                 ),
                                 Row(
@@ -416,7 +416,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           SizedBox(
                             height: 280,
                             child: StreamBuilder<List<ProductModel>>(
-                              stream: ProductService().streamProducts(shopId: product.shopId),
+                              stream: ProductService().streamProducts(
+                                mode: product.mode,
+                                shopId: product.shopId,
+                              ),
                               builder: (context, snapshot) {
                                 if (snapshot.hasError) {
                                   return Center(child: Text('Error loading products', style: AppTextStyles.supporting));

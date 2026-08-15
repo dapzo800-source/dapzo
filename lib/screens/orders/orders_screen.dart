@@ -103,12 +103,17 @@ class _OrdersScreenState extends State<OrdersScreen>
 
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        centerTitle: false,
 
         leading: IconButton(
           icon: const Icon(
-            Icons.arrow_back_rounded,
+            Icons.arrow_back_ios_new_rounded,
             size: 20,
           ),
+          color: AppColors.textDark,
+          tooltip: 'Back',
           onPressed: () {
             if (widget.embedded) {
               context.findAncestorStateOfType<HomeScreenState>()?.goToTab(0);
@@ -123,7 +128,10 @@ class _OrdersScreenState extends State<OrdersScreen>
           },
         ),
 
-        title: const Text('My Orders'),
+        title: Text(
+          'My Orders',
+          style: AppTextStyles.heading.copyWith(fontSize: 18),
+        ),
 
         bottom: TabBar(
           controller: _tabController,

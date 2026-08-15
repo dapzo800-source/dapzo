@@ -29,9 +29,11 @@ class ProfileScreen extends StatelessWidget {
         automaticallyImplyLeading: false,
         backgroundColor: AppColors.surface,
         elevation: 0,
-        centerTitle: true,
+        centerTitle: false,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, size: 22),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          color: AppColors.textDark,
+          tooltip: 'Back',
           onPressed: () {
             if (embedded) {
               context.findAncestorStateOfType<HomeScreenState>()?.goToTab(0);
@@ -177,42 +179,43 @@ class ProfileScreen extends StatelessWidget {
           // ── Group 3: Logout ──
           _MenuGroup(
             children: [
-            icon: Icons.logout,
-            label: 'Logout',
-            color: AppColors.error,
-            onTap: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (dialogContext) => AlertDialog(
-                  title: const Text('Log out?'),
-                  content: const Text('Are you sure you want to log out of Dapzo?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(false),
-                      child: const Text('Cancel'),
+              _MenuTile(
+                icon: Icons.logout,
+                label: 'Logout',
+                color: AppColors.error,
+                showDivider: false,
+                onTap: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Log out?'),
+                      content: const Text('Are you sure you want to log out of Dapzo?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(true),
+                          style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                          child: const Text('Log Out'),
+                        ),
+                      ],
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(true),
-                      style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                      child: const Text('Log Out'),
-                    ),
-                  ],
-                ),
-              );
+                  );
 
-              if (confirmed != true) return;
+                  if (confirmed != true) return;
 
-              await AuthService().signOut();
-              if (context.mounted) {
-                context.read<AppState>().clearUserData();
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-                  (route) => false,
-                );
-              }
-            },
-            showDivider: false,
-          ),
+                  await AuthService().signOut();
+                  if (context.mounted) {
+                    context.read<AppState>().clearUserData();
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+                      (route) => false,
+                    );
+                  }
+                },
+              ),
             ],
           ),
           const SizedBox(height: 40),

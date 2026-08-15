@@ -62,11 +62,11 @@ class LocationService {
   /// Asynchronously verifies whether an area or lat/lng is serviceable
   /// using Firestore `delivery_zones` collection with local fallback for KGF, Bangarapet, etc.
   Future<bool> checkServiceability({
-    required String area,
+    String area = '',
     required double latitude,
     required double longitude,
   }) async {
-    if (isAreaServiceable(area)) return true;
+    if (area.isNotEmpty && isAreaServiceable(area)) return true;
 
     try {
       final snap = await _db.collection('delivery_zones').where('isActive', isEqualTo: true).get();

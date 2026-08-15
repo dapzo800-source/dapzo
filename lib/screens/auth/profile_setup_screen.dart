@@ -282,8 +282,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: widget.isEditing
-          ? AppBar(title: const Text('Edit Profile'), elevation: 0)
+          ? AppBar(
+              backgroundColor: AppColors.surface,
+              elevation: 0,
+              centerTitle: false,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                color: AppColors.textDark,
+                tooltip: 'Back',
+                onPressed: () => Navigator.maybePop(context),
+              ),
+              title: Text('Edit Profile', style: AppTextStyles.heading.copyWith(fontSize: 18)),
+            )
           : null,
       body: SafeArea(
         child: SingleChildScrollView(

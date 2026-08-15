@@ -38,6 +38,31 @@ class _CheckRadiusScreenState extends State<CheckRadiusScreen> {
   bool _checking = false;
   bool? _available;
 
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      if (user.displayName != null && user.displayName!.isNotEmpty) {
+        _nameController.text = user.displayName!;
+      }
+      if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty) {
+        _phoneController.text = user.phoneNumber!;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _areaController.dispose();
+    _cityController.dispose();
+    _pincodeController.dispose();
+    super.dispose();
+  }
+
   Future<void> _useCurrentLocation() async {
     setState(() => _checking = true);
     try {
@@ -45,14 +70,28 @@ class _CheckRadiusScreenState extends State<CheckRadiusScreen> {
       _lat = position.latitude;
       _lng = position.longitude;
 
-      final shop = await _locationService.findServingShop(
+      final isServiceable = await _locationService.checkServiceability(
         latitude: _lat!,
         longitude: _lng!,
       );
-      setState(() => _available = shop != null);
+      setState(() => _available = isServiceable);
+
+      if (isServiceable) {
+        if (_areaController.text.isEmpty) {
+          _areaController.text = 'Nearby Area';
+        }
+        if (_cityController.text.isEmpty) {
+          _cityController.text = 'Current City';
+        }
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('GPS Error: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _checking = false);
@@ -63,13 +102,19 @@ class _CheckRadiusScreenState extends State<CheckRadiusScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_lat == null || _lng == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please check delivery availability first')),
+        const SnackBar(
+          content: Text('Please tap "Check Delivery Availability" or "Use Current GPS Location" first'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
     if (_available != true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Delivery is not available at this location')),
+        const SnackBar(
+          content: Text('Delivery is not currently available at this location'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
@@ -95,119 +140,268 @@ class _CheckRadiusScreenState extends State<CheckRadiusScreen> {
     appState.setSelectedAddress(address);
 
     if (!mounted) return;
-    // Pop once with a success flag. The caller (SelectLocationScreen)
-    // decides whether to also pop itself — AddressesScreen (Profile flow)
-    // does not, so it correctly lands back on the address list instead
-    // of being kicked all the way to Home.
     Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Address')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        centerTitle: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          color: AppColors.textDark,
+          tooltip: 'Back',
+          onPressed: () => Navigator.maybePop(context),
+        ),
+        title: Text(
+          'Add Delivery Address',
+          style: AppTextStyles.heading.copyWith(fontSize: 18),
+        ),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              OutlinedButton.icon(
-                onPressed: _checking ? null : _useCurrentLocation,
-                icon: const Icon(Icons.my_location),
-                label: Text(_checking ? 'Checking...' : 'Use Current Location'),
-              ),
-              if (_available != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: (_available! ? AppColors.success : AppColors.error).withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _available! ? Icons.check_circle : Icons.cancel,
-                        color: _available! ? AppColors.success : AppColors.error,
-                        size: 18,
+              // ── GPS Detection Card ──
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.divider),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: _checking ? null : _useCurrentLocation,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: _checking
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.my_location_rounded, size: 20),
+                        label: Text(
+                          _checking ? 'Verifying Delivery Zone...' : 'Use Current GPS Location',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _available! ? 'Delivery available here' : 'Delivery not available here',
-                        style: AppTextStyles.body.copyWith(
-                          color: _available! ? AppColors.success : AppColors.error,
+                    ),
+                    if (_available != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: (_available! ? AppColors.success : AppColors.error)
+                              .withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: (_available! ? AppColors.success : AppColors.error)
+                                .withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _available! ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                              color: _available! ? AppColors.success : AppColors.error,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _available!
+                                    ? 'Great news! Delivery is available at this location 🎉'
+                                    : 'Delivery is currently not available here.',
+                                style: AppTextStyles.body.copyWith(
+                                  color: _available! ? AppColors.success : AppColors.error,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-              ],
+              ),
+
               const SizedBox(height: 20),
+
+              // ── Address Label Chips ──
+              Text(
+                'Save address as',
+                style: AppTextStyles.sectionHeading.copyWith(fontSize: 14),
+              ),
+              const SizedBox(height: 10),
               Wrap(
-                spacing: 10,
+                spacing: 8,
                 children: AppConstants.addressLabels.map((label) {
                   final selected = _label == label;
                   return ChoiceChip(
-                    label: Text(label),
+                    label: Text(
+                      label,
+                      style: TextStyle(
+                        color: selected ? Colors.white : AppColors.textDark,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                      ),
+                    ),
                     selected: selected,
+                    selectedColor: AppColors.primary,
+                    backgroundColor: AppColors.surfaceVariant,
+                    side: BorderSide(
+                      color: selected ? AppColors.primary : AppColors.divider,
+                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     onSelected: (_) => setState(() => _label = label),
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                validator: Validators.name,
-                decoration: const InputDecoration(hintText: 'Receiver name'),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                validator: Validators.phone,
-                decoration: const InputDecoration(hintText: 'Phone number'),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _addressController,
-                validator: (v) => Validators.notEmpty(v, field: 'Address'),
-                decoration: const InputDecoration(hintText: 'House / flat / street'),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _areaController,
-                validator: (v) => Validators.notEmpty(v, field: 'Area'),
-                decoration: const InputDecoration(hintText: 'Area / locality'),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _cityController,
-                      validator: (v) => Validators.notEmpty(v, field: 'City'),
-                      decoration: const InputDecoration(hintText: 'City'),
+
+              const SizedBox(height: 20),
+
+              // ── Form Inputs ──
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.divider),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _pincodeController,
-                      keyboardType: TextInputType.number,
-                      validator: (v) => Validators.notEmpty(v, field: 'Pincode'),
-                      decoration: const InputDecoration(hintText: 'Pincode'),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _nameController,
+                      validator: Validators.name,
+                      style: AppTextStyles.body,
+                      decoration: InputDecoration(
+                        labelText: 'Receiver Name',
+                        hintText: 'e.g. John Doe',
+                        prefixIcon: const Icon(Icons.person_outline_rounded, size: 20),
+                        labelStyle: AppTextStyles.caption,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      validator: Validators.phone,
+                      style: AppTextStyles.body,
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        hintText: '10-digit mobile number',
+                        prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                        labelStyle: AppTextStyles.caption,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _addressController,
+                      validator: (v) => Validators.notEmpty(v, field: 'Address'),
+                      style: AppTextStyles.body,
+                      decoration: InputDecoration(
+                        labelText: 'House / Flat / Street Name',
+                        hintText: 'e.g. Flat 302, Green Valley Apartments',
+                        prefixIcon: const Icon(Icons.home_outlined, size: 20),
+                        labelStyle: AppTextStyles.caption,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _areaController,
+                      validator: (v) => Validators.notEmpty(v, field: 'Area'),
+                      style: AppTextStyles.body,
+                      decoration: InputDecoration(
+                        labelText: 'Area / Locality',
+                        hintText: 'e.g. Indiranagar 100ft Road',
+                        prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                        labelStyle: AppTextStyles.caption,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _cityController,
+                            validator: (v) => Validators.notEmpty(v, field: 'City'),
+                            style: AppTextStyles.body,
+                            decoration: InputDecoration(
+                              labelText: 'City',
+                              hintText: 'e.g. Bangalore',
+                              labelStyle: AppTextStyles.caption,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _pincodeController,
+                            keyboardType: TextInputType.number,
+                            validator: (v) => Validators.notEmpty(v, field: 'Pincode'),
+                            style: AppTextStyles.body,
+                            decoration: InputDecoration(
+                              labelText: 'Pincode',
+                              hintText: 'e.g. 560038',
+                              labelStyle: AppTextStyles.caption,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
+
               const SizedBox(height: 24),
+
               SizedBox(
                 width: double.infinity,
+                height: 52,
                 child: ElevatedButton(
                   onPressed: _saveAddress,
-                  child: const Text('Save Address'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text(
+                    'Save Address & Proceed',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
                 ),
               ),
             ],
