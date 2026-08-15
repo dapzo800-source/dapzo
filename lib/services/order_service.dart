@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -234,37 +235,46 @@ class OrderService {
     String userId, {
     String? statusFilter,
   }) {
-    if (userId.trim().isEmpty) {
-      return Stream.value(<OrderModel>[]);
-    }
-
     final cleanUserId = userId.trim();
+    final currentAuthUser = FirebaseAuth.instance.currentUser;
+    final String authUid = currentAuthUser?.uid ?? '';
+    final String rawAuthPhone = currentAuthUser?.phoneNumber ?? '';
+    final String cleanAuthPhone = rawAuthPhone.replaceAll(RegExp(r'[^0-9]'), '');
 
-    final query = _db
-        .collection('orders')
-        .where(
-          Filter.or(
-            Filter(
-              'userId',
-              isEqualTo: cleanUserId,
-            ),
-            Filter(
-              'customerId',
-              isEqualTo: cleanUserId,
-            ),
-          ),
-        );
-
-    return query.snapshots().map((snapshot) {
+    return _db.collection('orders').snapshots().map((snapshot) {
       final orders = <OrderModel>[];
 
       for (final doc in snapshot.docs) {
         try {
-          final order = OrderModel.fromFirestore(doc);
+          final data = doc.data();
+          final String docUserId =
+              (data['userId'] ?? data['customerId'] ?? '').toString().trim();
+          final String rawDocPhone = (data['customerPhone'] ??
+                  data['phone'] ??
+                  (data['deliveryAddress'] is Map
+                      ? data['deliveryAddress']['phone']
+                      : '') ??
+                  '')
+              .toString()
+              .trim();
+          final String cleanDocPhone =
+              rawDocPhone.replaceAll(RegExp(r'[^0-9]'), '');
 
-          if (statusFilter == null ||
-              order.status.name == statusFilter) {
-            orders.add(order);
+          final bool isMatch = (cleanUserId.isNotEmpty && docUserId == cleanUserId) ||
+              (authUid.isNotEmpty && docUserId == authUid) ||
+              (cleanAuthPhone.isNotEmpty &&
+                  cleanDocPhone.isNotEmpty &&
+                  (cleanAuthPhone == cleanDocPhone ||
+                      cleanAuthPhone.endsWith(cleanDocPhone) ||
+                      cleanDocPhone.endsWith(cleanAuthPhone)));
+
+          if (isMatch) {
+            final order = OrderModel.fromFirestore(doc);
+
+            if (statusFilter == null ||
+                order.status.name == statusFilter) {
+              orders.add(order);
+            }
           }
         } catch (e, stackTrace) {
           if (kDebugMode) {

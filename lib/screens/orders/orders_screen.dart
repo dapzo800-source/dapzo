@@ -12,6 +12,7 @@ import '../../models/order_model.dart';
 import '../../services/order_service.dart';
 import '../../state/app_state.dart';
 import 'order_tracking_screen.dart';
+import '../home/home_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   final bool embedded;
@@ -102,14 +103,21 @@ class _OrdersScreenState extends State<OrdersScreen>
       appBar: AppBar(
         automaticallyImplyLeading: false,
 
-        leading: Navigator.canPop(context) && !widget.embedded
+        leading: !widget.embedded
             ? IconButton(
                 icon: const Icon(
                   Icons.arrow_back_ios_new_rounded,
                   size: 20,
                 ),
                 onPressed: () {
-                  Navigator.maybePop(context);
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  } else {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      (route) => false,
+                    );
+                  }
                 },
               )
             : null,

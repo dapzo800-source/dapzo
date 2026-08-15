@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../models/order_model.dart';
 import '../../services/order_service.dart';
 import '../../services/location_service.dart';
+import '../home/home_screen.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
   final String orderId;
@@ -34,18 +36,34 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     super.dispose();
   }
 
+  Future<void> _callRider(String? phone) async {
+    if (phone == null || phone.trim().isEmpty) return;
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final uri = Uri.parse('tel:$cleanPhone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Track Order'),
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                onPressed: () => Navigator.maybePop(context),
-              )
-            : null,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const HomeScreen()),
+                (route) => false,
+              );
+            }
+          },
+        ),
       ),
       body: StreamBuilder<OrderModel>(
         stream: _orderService.streamOrder(widget.orderId),
@@ -89,7 +107,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
           return Column(
             children: [
-              // ── Top Section: Google Map or Delivery Partner Notice ──
+              // ── Top Section: Live Interactive Google Map with Rider Navigation ──
               Expanded(
                 flex: 5,
                 child: _buildMapSection(order, customerLat, customerLng),
@@ -113,17 +131,31 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(20),
                     children: [
-                      // Header Row
+                      // Header Row (Safe flex layout, prevents overflow)
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Order #${order.orderCode}', style: AppTextStyles.heading.copyWith(fontSize: 18)),
-                              Text(order.shopName, style: AppTextStyles.supporting.copyWith(fontSize: 12)),
-                            ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Order #${order.orderCode}',
+                                  style: AppTextStyles.heading.copyWith(fontSize: 18),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  order.shopName,
+                                  style: AppTextStyles.supporting.copyWith(fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
@@ -141,6 +173,63 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
+
+                      // Assigned Delivery Partner Card
+                      if (order.deliveryPartnerId != null && order.deliveryPartnerId!.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.divider),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 22,
+                                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                                child: const Icon(Icons.two_wheeler_rounded, color: AppColors.primary, size: 24),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      order.deliveryPartnerName ?? 'Dapzo Delivery Partner',
+                                      style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      order.status == OrderStatus.outForDelivery
+                                          ? 'On the way to your location 🛵'
+                                          : 'Assigned & heading to shop',
+                                      style: AppTextStyles.caption.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (order.deliveryPartnerPhone != null && order.deliveryPartnerPhone!.isNotEmpty)
+                                InkWell(
+                                  onTap: () => _callRider(order.deliveryPartnerPhone),
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withValues(alpha: 0.15),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.phone_rounded, color: Colors.green, size: 20),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
 
                       // Delivery Handover OTP Card
                       if (order.status != OrderStatus.delivered && order.status != OrderStatus.cancelled)
@@ -202,7 +291,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             children: [
                               const Icon(Icons.cancel_outlined, color: AppColors.error),
                               const SizedBox(width: 10),
-                              Text('This order was cancelled', style: AppTextStyles.body.copyWith(color: AppColors.error)),
+                              Expanded(
+                                child: Text('This order was cancelled', style: AppTextStyles.body.copyWith(color: AppColors.error)),
+                              ),
                             ],
                           ),
                         )
@@ -255,6 +346,42 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             );
                           }),
                         ),
+
+                      // Items in Order Section
+                      if (order.items.isNotEmpty) ...[
+                        const Divider(height: 24),
+                        Text('Items Ordered (${order.items.length})',
+                            style: AppTextStyles.heading.copyWith(fontSize: 14)),
+                        const SizedBox(height: 10),
+                        ...order.items.map((item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surfaceVariant,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text('${item.quantity}x',
+                                        style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w700)),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      item.name + (item.selectedWeight != null && item.selectedWeight!.isNotEmpty ? ' (${item.selectedWeight})' : ''),
+                                      style: AppTextStyles.body.copyWith(fontSize: 13, fontWeight: FontWeight.w500),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Text('₹${item.totalPrice.toStringAsFixed(0)}',
+                                      style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700, fontSize: 13)),
+                                ],
+                              ),
+                            )),
+                      ],
+
                       const Divider(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -293,60 +420,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Widget _buildMapSection(OrderModel order, double custLat, double custLng) {
-    final isOutForDelivery = order.status == OrderStatus.outForDelivery;
     final partnerId = order.deliveryPartnerId;
-
-    if (partnerId == null || partnerId.isEmpty) {
-      return Container(
-        color: AppColors.surfaceVariant,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.delivery_dining_outlined, size: 48, color: AppColors.textSecondary),
-              const SizedBox(height: 8),
-              Text(
-                'Delivery partner not assigned yet',
-                style: AppTextStyles.body.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                order.status.label,
-                style: AppTextStyles.caption.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (!isOutForDelivery) {
-      return Container(
-        color: AppColors.surfaceVariant,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.storefront_outlined, size: 48, color: AppColors.primary),
-              const SizedBox(height: 8),
-              Text(
-                'Order is being prepared at ${order.shopName}',
-                style: AppTextStyles.body.copyWith(color: AppColors.textDark, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Live GPS tracking will activate when driver picks up your order.',
-                style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
     // Stream real-time driver coordinates from Firestore collection `delivery_locations/{deliveryPartnerId}`
     return StreamBuilder<Map<String, dynamic>?>(
-      stream: _locationService.streamDeliveryPartnerLocation(partnerId),
+      stream: (partnerId != null && partnerId.isNotEmpty)
+          ? _locationService.streamDeliveryPartnerLocation(partnerId)
+          : Stream.value(null),
       builder: (context, locSnap) {
         final locData = locSnap.data;
         final driverLat = (locData?['latitude'] as num?)?.toDouble() ?? (locData?['lat'] as num?)?.toDouble();
@@ -368,7 +448,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               position: LatLng(driverLat, driverLng),
               infoWindow: InfoWindow(
                 title: order.deliveryPartnerName ?? 'Delivery Partner',
-                snippet: 'Out for delivery',
+                snippet: order.status == OrderStatus.outForDelivery ? 'Out for delivery' : 'Assigned Driver',
               ),
               icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
             ),
@@ -379,12 +459,63 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             ? LatLng(driverLat, driverLng)
             : LatLng(custLat, custLng);
 
-        return GoogleMap(
-          initialCameraPosition: CameraPosition(target: initialTarget, zoom: 14),
-          markers: markers,
-          onMapCreated: (controller) => _mapController = controller,
-          myLocationButtonEnabled: false,
-          zoomControlsEnabled: false,
+        return Stack(
+          children: [
+            GoogleMap(
+              initialCameraPosition: CameraPosition(target: initialTarget, zoom: 14.5),
+              markers: markers,
+              onMapCreated: (controller) => _mapController = controller,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
+            ),
+            Positioned(
+              top: 12,
+              left: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.surface.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      order.status == OrderStatus.outForDelivery
+                          ? Icons.two_wheeler_rounded
+                          : Icons.location_on_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        order.status == OrderStatus.outForDelivery
+                            ? 'Rider is on the way to your delivery address'
+                            : (partnerId != null && partnerId.isNotEmpty
+                                ? 'Rider assigned · Preparing at ${order.shopName}'
+                                : 'Shop is preparing your order'),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textDark,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         );
       },
     );

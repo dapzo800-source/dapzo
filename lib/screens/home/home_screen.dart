@@ -3,16 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../services/product_service.dart';
 import '../../services/shop_service.dart';
+import '../../services/order_service.dart';
+import '../../models/order_model.dart';
 import '../../state/app_state.dart';
 import '../../services/cart_service.dart';
 import '../../widgets/search_bar.dart';
 
 import '../location/select_location_screen.dart';
 import '../orders/orders_screen.dart';
+import '../orders/order_tracking_screen.dart';
 import '../profile/profile_screen.dart';
 import '../cart/cart_screen.dart';
 import 'category_screen.dart';
@@ -227,18 +231,21 @@ class _HomeTab extends StatefulWidget {
 class _HomeTabState extends State<_HomeTab> {
   late final ProductService _productService;
   late final ShopService _shopService;
+  late final OrderService _orderService;
 
   @override
   void initState() {
     super.initState();
     _productService = ProductService();
     _shopService = ShopService();
+    _orderService = OrderService();
   }
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final mode = appState.mode;
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? appState.user?.uid ?? '';
 
     return Container(
       color: AppColors.background,
@@ -248,6 +255,15 @@ class _HomeTabState extends State<_HomeTab> {
           SliverToBoxAdapter(
             child: _buildHeader(context, appState),
           ),
+
+          // ── Active Order Tracker Banner (If customer has active order) ───
+          if (currentUid.isNotEmpty)
+            SliverToBoxAdapter(
+              child: _ActiveOrderBanner(
+                userId: currentUid,
+                orderService: _orderService,
+              ),
+            ),
 
           // ── Mode Toggle ──────────────────────────────────────────────────
           SliverToBoxAdapter(
@@ -1403,6 +1419,169 @@ class _ErrorBox extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ============================================================================
+// ACTIVE ORDER BANNER (Interactive Live Status on Home Tab)
+// ============================================================================
+
+class _ActiveOrderBanner extends StatelessWidget {
+  final String userId;
+  final OrderService orderService;
+
+  const _ActiveOrderBanner({
+    required this.userId,
+    required this.orderService,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (userId.isEmpty) return const SizedBox.shrink();
+
+    return StreamBuilder<List<OrderModel>>(
+      stream: orderService.streamUserOrders(userId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+
+        final activeOrders = (snapshot.data ?? []).where((order) {
+          return order.status != OrderStatus.delivered &&
+              order.status != OrderStatus.cancelled;
+        }).toList();
+
+        if (activeOrders.isEmpty) return const SizedBox.shrink();
+
+        final activeOrder = activeOrders.first;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => OrderTrackingScreen(orderId: activeOrder.id),
+                ),
+              ),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withValues(alpha: 0.92),
+                      const Color(0xFFE8472A),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.two_wheeler_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Order #${activeOrder.orderCode}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.25),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  activeOrder.status.label.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            activeOrder.shopName,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Track',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 10,
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
