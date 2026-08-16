@@ -401,10 +401,90 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen>
                       ),
                       const SizedBox(height: 16),
 
-                      // Delivery Handover OTP Card
+                      // Delivery Handover OTP Card (hide if delivered or cancelled)
                       if (order.status != OrderStatus.delivered &&
                           order.status != OrderStatus.cancelled)
                         _buildOtpCard(context, otpCode),
+
+                      // Order Delivered Completion Card (End of tracking)
+                      if (order.status == OrderStatus.delivered) ...[
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.green,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.check_rounded, color: Colors.white, size: 24),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Order Delivered! 🎉',
+                                          style: AppTextStyles.heading.copyWith(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.green.shade800,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Delivery is complete. Hope you enjoy your meal!',
+                                          style: AppTextStyles.caption.copyWith(
+                                            color: AppColors.textDark,
+                                            fontSize: 12.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 46,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                                      (route) => false,
+                                    );
+                                  },
+                                  icon: const Icon(Icons.home_rounded, size: 18),
+                                  label: const Text(
+                                    'Done & Back to Home',
+                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green.shade700,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
 
                       const SizedBox(height: 14),
 

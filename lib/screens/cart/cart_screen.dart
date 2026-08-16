@@ -12,10 +12,224 @@ import '../home/home_screen.dart';
 import 'checkout_screen.dart';
 
 /// Cart screen — Interactive multi-shop grouping, sleek quantity steppers & grand total receipt.
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   final bool embedded;
 
   const CartScreen({super.key, this.embedded = false});
+
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  String? _deliveryInstructions;
+  final Set<String> _selectedPreferences = {};
+  final TextEditingController _instructionsController = TextEditingController();
+
+  @override
+  void dispose() {
+    _instructionsController.dispose();
+    super.dispose();
+  }
+
+  void _openDeliveryInstructionsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+            const options = [
+              'Leave at door 🚪',
+              'Don\'t ring bell 🔕',
+              'Avoid cutlery 🍴',
+              'Call before delivery 📞',
+              'Pet at home 🐕',
+              'Directions / Gate code 📍',
+            ];
+
+            return Container(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + bottomInset),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.16),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Handle
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.divider,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Delivery Instructions',
+                        style: AppTextStyles.heading.copyWith(fontSize: 18),
+                      ),
+                      if (_deliveryInstructions != null && _deliveryInstructions!.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _deliveryInstructions = null;
+                              _selectedPreferences.clear();
+                              _instructionsController.clear();
+                            });
+                            Navigator.pop(modalCtx);
+                          },
+                          child: const Text(
+                            'Clear',
+                            style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Quick Preferences:',
+                    style: AppTextStyles.caption.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: options.map((opt) {
+                      final isSelected = _selectedPreferences.contains(opt);
+                      return GestureDetector(
+                        onTap: () {
+                          setModalState(() {
+                            if (isSelected) {
+                              _selectedPreferences.remove(opt);
+                            } else {
+                              _selectedPreferences.add(opt);
+                            }
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 160),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isSelected ? AppColors.primary : AppColors.divider,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isSelected) ...[
+                                const Icon(Icons.check_rounded, size: 14, color: Colors.white),
+                                const SizedBox(width: 4),
+                              ],
+                              Text(
+                                opt,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected ? Colors.white : AppColors.textDark,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _instructionsController,
+                    maxLines: 2,
+                    maxLength: 140,
+                    style: AppTextStyles.body.copyWith(fontSize: 13.5),
+                    decoration: InputDecoration(
+                      hintText: 'Add custom notes or instructions for delivery partner...',
+                      hintStyle: AppTextStyles.supporting.copyWith(
+                        fontSize: 12.5,
+                        color: AppColors.textHint,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surfaceVariant.withValues(alpha: 0.5),
+                      contentPadding: const EdgeInsets.all(12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.divider),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.divider),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final parts = <String>[];
+                        if (_selectedPreferences.isNotEmpty) {
+                          parts.add(_selectedPreferences.join(', '));
+                        }
+                        final customNote = _instructionsController.text.trim();
+                        if (customNote.isNotEmpty) {
+                          parts.add(customNote);
+                        }
+                        final finalInst = parts.isNotEmpty ? parts.join(' | ') : null;
+
+                        setState(() {
+                          _deliveryInstructions = finalInst;
+                        });
+                        Navigator.pop(modalCtx);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Save Instructions',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +270,7 @@ class CartScreen extends StatelessWidget {
         color: AppColors.textDark,
         tooltip: 'Back',
         onPressed: () {
-          if (embedded) {
+          if (widget.embedded) {
             context.findAncestorStateOfType<HomeScreenState>()?.goToTab(0);
           } else if (Navigator.canPop(context)) {
             Navigator.pop(context);
@@ -211,7 +425,7 @@ class CartScreen extends StatelessWidget {
         Center(
           child: ElevatedButton.icon(
             onPressed: () {
-              if (embedded) {
+              if (widget.embedded) {
                 context.findAncestorStateOfType<HomeScreenState>()?.goToTab(0);
               } else {
                 Navigator.of(context).pushAndRemoveUntil(
@@ -591,49 +805,85 @@ class CartScreen extends StatelessWidget {
 
   // ── Delivery / Cooking Instructions Card ──
   Widget _buildInstructionsCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+    final hasInstructions = _deliveryInstructions != null && _deliveryInstructions!.isNotEmpty;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openDeliveryInstructionsModal(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.note_alt_outlined,
-                size: 18, color: AppColors.textDark),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Add Delivery Instructions',
-                  style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  'Avoid calling, leave at door, etc.',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: 11.5,
-                  ),
-                ),
-              ],
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: hasInstructions
+                ? AppColors.primary.withValues(alpha: 0.05)
+                : AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: hasInstructions ? AppColors.primary.withValues(alpha: 0.5) : AppColors.divider,
+              width: hasInstructions ? 1.4 : 1.0,
             ),
           ),
-          Icon(Icons.chevron_right_rounded,
-              color: AppColors.textSecondary, size: 20),
-        ],
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: hasInstructions
+                      ? AppColors.primary.withValues(alpha: 0.15)
+                      : AppColors.surfaceVariant,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  hasInstructions ? Icons.check_circle_rounded : Icons.note_alt_outlined,
+                  size: 18,
+                  color: hasInstructions ? AppColors.primary : AppColors.textDark,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasInstructions ? 'Delivery Instructions Added' : 'Add Delivery Instructions',
+                      style: AppTextStyles.body.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: hasInstructions ? AppColors.primary : AppColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasInstructions ? _deliveryInstructions! : 'Avoid calling, leave at door, gate code, etc.',
+                      style: AppTextStyles.caption.copyWith(
+                        color: hasInstructions ? AppColors.textDark : AppColors.textSecondary,
+                        fontSize: 11.5,
+                        fontWeight: hasInstructions ? FontWeight.w500 : FontWeight.normal,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                hasInstructions ? 'Edit' : 'Add',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12.5,
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.primary,
+                size: 18,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -722,7 +972,7 @@ class CartScreen extends StatelessWidget {
   Widget _buildBottomCheckoutDock(
       BuildContext context, double total, int itemCount) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
@@ -759,29 +1009,36 @@ class CartScreen extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: SizedBox(
-                height: 50,
+                height: 48,
                 child: ElevatedButton(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                        builder: (_) => const CheckoutScreen()),
+                      builder: (_) => CheckoutScreen(
+                        deliveryInstructions: _deliveryInstructions,
+                      ),
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Text('Proceed to Checkout',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w700)),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded, size: 18),
-                    ],
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Text('Proceed to Checkout',
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.w700)),
+                        SizedBox(width: 6),
+                        Icon(Icons.arrow_forward_rounded, size: 18),
+                      ],
+                    ),
                   ),
                 ),
               ),

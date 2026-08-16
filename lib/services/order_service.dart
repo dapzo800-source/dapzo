@@ -30,6 +30,7 @@ class OrderService {
     String? shopName,
     Map<String, dynamic>? deliveryAddress,
     String? couponCode,
+    String? deliveryInstructions,
     String? gatewayTransactionId,
     String? checkoutReferenceId,
     String paymentStatus = 'pending',
@@ -76,6 +77,8 @@ class OrderService {
 
       'paymentMethod': paymentMethod,
       'paymentStatus': paymentStatus,
+      'deliveryInstructions': deliveryInstructions,
+      'notes': deliveryInstructions,
 
       'gatewayTransactionId': gatewayTransactionId,
       'checkoutReferenceId': checkoutReferenceId,

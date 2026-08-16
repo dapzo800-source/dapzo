@@ -16,7 +16,9 @@ import '../orders/order_tracking_screen.dart';
 enum _PaymentMethod { online, cod }
 
 class CheckoutScreen extends StatefulWidget {
-  const CheckoutScreen({super.key});
+  final String? deliveryInstructions;
+
+  const CheckoutScreen({super.key, this.deliveryInstructions});
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -226,6 +228,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'addressId': addr.id,
         'deliveryAddress': addr.toMap(),
         'couponCode': _appliedCoupon,
+        'deliveryInstructions': widget.deliveryInstructions,
+        'notes': widget.deliveryInstructions,
       };
 
       try {
@@ -268,6 +272,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           shopName: primaryShopName,
           deliveryAddress: addr.toMap(),
           couponCode: _appliedCoupon,
+          deliveryInstructions: widget.deliveryInstructions,
         );
 
         cart.clear();
@@ -520,15 +525,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         Text(
                           _isItemsExpanded ? 'Hide' : 'View',
                           style: AppTextStyles.caption.copyWith(
-                            color: AppColors.primary,
                             fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
                           ),
                         ),
                         Icon(
                           _isItemsExpanded
                               ? Icons.keyboard_arrow_up_rounded
                               : Icons.keyboard_arrow_down_rounded,
-                          color: AppColors.primary,
                           size: 18,
                         ),
                       ],
@@ -570,7 +574,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           child: Text(
             '${item.quantity}x',
             style: AppTextStyles.caption.copyWith(
-              color: AppColors.primary,
               fontWeight: FontWeight.w800,
             ),
           ),

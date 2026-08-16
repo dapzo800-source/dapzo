@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/product_model.dart';
@@ -6,17 +7,13 @@ import '../services/cart_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
-/// List-style product card — image on the left (square, rounded), details
-/// on the right, with a veg/non-veg dot, an optional "Highly reordered"
-/// badge, price, and an ADD control that turns into a live +/- quantity
-/// stepper once the item is already in the cart.
-///
-/// Typography and spacing here are tuned deliberately:
-///  - Name is the clear focal point (bold, tight letter-spacing).
-///  - Description sits one visual step down (muted color, relaxed line-height).
-///  - Price is the second focal point, bold and slightly larger than body text.
-///  - A soft shadow replaces a hard border for a cleaner, calmer card edge.
-class ProductListCard extends StatelessWidget {
+/// Modern, interactive list-style product card with tactile touch animations.
+/// Designed for maximum engagement:
+///  - Smooth spring press micro-interaction on tap
+///  - Full product name displayed clearly with zero truncation
+///  - Veg / Non-Veg badge with crisp indicator
+///  - Animated ADD / Stepper button with haptic feedback
+class ProductListCard extends StatefulWidget {
   final ProductModel product;
   final VoidCallback onTap;
   final VoidCallback onAdd;
@@ -30,128 +27,188 @@ class ProductListCard extends StatelessWidget {
     this.highlyReordered = false,
   });
 
+  @override
+  State<ProductListCard> createState() => _ProductListCardState();
+}
+
+class _ProductListCardState extends State<ProductListCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _scaleController;
+  late final Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+      reverseDuration: const Duration(milliseconds: 140),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.975).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
   bool get _isVeg =>
-      product.mode == 'food' &&
-      !product.name.toLowerCase().contains('chicken') &&
-      !product.name.toLowerCase().contains('mutton') &&
-      !product.name.toLowerCase().contains('beef') &&
-      !product.name.toLowerCase().contains('prawn') &&
-      !product.name.toLowerCase().contains('fish') &&
-      !product.name.toLowerCase().contains('salmon');
+      widget.product.mode == 'food' &&
+      !widget.product.name.toLowerCase().contains('chicken') &&
+      !widget.product.name.toLowerCase().contains('mutton') &&
+      !widget.product.name.toLowerCase().contains('beef') &&
+      !widget.product.name.toLowerCase().contains('prawn') &&
+      !widget.product.name.toLowerCase().contains('fish') &&
+      !widget.product.name.toLowerCase().contains('salmon');
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.divider),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Image + veg dot ─────────────────────────────────────────
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: SizedBox(
-                    width: 100,
-                    height: 100,
-                    child: CachedNetworkImage(
-                      imageUrl: product.imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => _imagePlaceholder(),
-                      errorWidget: (_, __, ___) => _imageError(),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 6,
-                  left: 6,
-                  child: _VegDot(isVeg: _isVeg),
-                ),
-              ],
-            ),
-            const SizedBox(width: 16),
+    final product = widget.product;
 
-            // ── Details ──────────────────────────────────────────────────
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: GestureDetector(
+        onTapDown: (_) => _scaleController.forward(),
+        onTapUp: (_) {
+          _scaleController.reverse();
+          HapticFeedback.lightImpact();
+          widget.onTap();
+        },
+        onTapCancel: () => _scaleController.reverse(),
+        child: Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: AppColors.divider.withValues(alpha: 0.8),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.035),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Product Image with Veg Badge ─────────────────────────
+              Stack(
                 children: [
-                  Text(
-                    product.name,
-                    style: AppTextStyles.productName.copyWith(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2,
-                      height: 1.2,
-                      color: AppColors.textDark,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: SizedBox(
+                      width: 100,
+                      height: 100,
+                      child: product.imageUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: product.imageUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => _imagePlaceholder(),
+                              errorWidget: (_, __, ___) => _imageError(),
+                            )
+                          : _imageError(),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    product.description,
-                    style: AppTextStyles.supporting.copyWith(
-                      fontSize: 13,
-                      height: 1.4,
-                      color: AppColors.textSecondary,
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: _VegBadge(isVeg: _isVeg),
+                  ),
+                  if (widget.highlyReordered)
+                    Positioned(
+                      bottom: 4,
+                      left: 4,
+                      right: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.75),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.star_rounded, size: 11, color: AppColors.warning),
+                            SizedBox(width: 2),
+                            Text(
+                              'Popular',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (highlyReordered) ...[
-                    const SizedBox(height: 7),
+                ],
+              ),
+              const SizedBox(width: 14),
+
+              // ── Details ──────────────────────────────────────────────────
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Full product name — wraps naturally with zero ellipsis truncation
+                    Text(
+                      product.name,
+                      style: AppTextStyles.productName.copyWith(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                        height: 1.25,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    if (product.description.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        product.description,
+                        style: AppTextStyles.supporting.copyWith(
+                          fontSize: 12.5,
+                          height: 1.35,
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    // Price + Add / Stepper control
                     Row(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(Icons.star_rounded, size: 14, color: AppColors.success),
-                        const SizedBox(width: 4),
                         Text(
-                          'Highly reordered',
-                          style: AppTextStyles.caption.copyWith(
-                            fontSize: 12,
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.1,
+                          '₹${product.price.toStringAsFixed(0)}',
+                          style: AppTextStyles.price.copyWith(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.2,
+                            color: AppColors.textDark,
                           ),
+                        ),
+                        _CartControl(
+                          product: product,
+                          onAdd: widget.onAdd,
                         ),
                       ],
                     ),
                   ],
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '₹${product.price.toStringAsFixed(0)}',
-                        style: AppTextStyles.price.copyWith(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.2,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      _CartControl(product: product, onAdd: onAdd),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -163,7 +220,7 @@ class ProductListCard extends StatelessWidget {
           child: SizedBox(
             width: 20,
             height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
           ),
         ),
       );
@@ -172,19 +229,16 @@ class ProductListCard extends StatelessWidget {
         color: AppColors.surfaceVariant,
         child: Center(
           child: Icon(
-            product.mode == 'meat' ? Icons.set_meal_outlined : Icons.restaurant_outlined,
+            widget.product.mode == 'meat' ? Icons.set_meal_outlined : Icons.restaurant_outlined,
             color: AppColors.textSecondary,
-            size: 28,
+            size: 32,
           ),
         ),
       );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CART CONTROL — shows "ADD +" when the item isn't in the cart yet, and a
-// live "− qty +" stepper once it is. Reads CartService directly so it stays
-// in sync no matter where the quantity changed (this card, the cart bar,
-// the cart screen, product detail, etc).
+// CART CONTROL — shows "ADD +" with haptic tap or active live stepper
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _CartControl extends StatelessWidget {
@@ -193,33 +247,45 @@ class _CartControl extends StatelessWidget {
 
   const _CartControl({required this.product, required this.onAdd});
 
-  /// Cards built from this widget never carry a `selectedWeight`, so the
-  /// line key is always the product id with an empty weight segment —
-  /// matching `CartItemModel.lineKey` (`'$productId::${selectedWeight ?? ''}'`).
-  String get _lineKey => '${product.id}::';
-
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartService>();
-    final quantity = cart.items
-        .where((item) => item.lineKey == _lineKey)
-        .fold<int>(0, (sum, item) => sum + item.quantity);
+    final matchingItems = cart.items.where((item) => item.productId == product.id).toList();
+    final quantity = matchingItems.fold<int>(0, (sum, item) => sum + item.quantity);
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 200),
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
       transitionBuilder: (child, animation) => FadeTransition(
         opacity: animation,
         child: ScaleTransition(scale: animation, child: child),
       ),
       child: quantity <= 0
-          ? _AddButtonOutlined(key: const ValueKey('add'), onTap: onAdd)
+          ? _AddButtonOutlined(
+              key: const ValueKey('add'),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onAdd();
+              },
+            )
           : _QuantityStepperButton(
               key: const ValueKey('stepper'),
               quantity: quantity,
-              onIncrement: () => context.read<CartService>().incrementQty(_lineKey),
-              onDecrement: () => context.read<CartService>().decrementQty(_lineKey),
+              onIncrement: () {
+                HapticFeedback.selectionClick();
+                if (matchingItems.isNotEmpty) {
+                  context.read<CartService>().incrementQty(matchingItems.first.lineKey);
+                } else {
+                  onAdd();
+                }
+              },
+              onDecrement: () {
+                HapticFeedback.selectionClick();
+                if (matchingItems.isNotEmpty) {
+                  context.read<CartService>().decrementQty(matchingItems.first.lineKey);
+                }
+              },
             ),
     );
   }
@@ -235,31 +301,41 @@ class _AddButtonOutlined extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.primary, width: 1.5),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'ADD',
-              style: AppTextStyles.badge.copyWith(
-                fontSize: 13,
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.4,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.primary, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-            ),
-            const SizedBox(width: 3),
-            Icon(Icons.add, color: AppColors.primary, size: 16),
-          ],
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'ADD',
+                style: AppTextStyles.badge.copyWith(
+                  fontSize: 12.5,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(width: 3),
+              const Icon(Icons.add_rounded, color: AppColors.primary, size: 16),
+            ],
+          ),
         ),
       ),
     );
@@ -267,7 +343,7 @@ class _AddButtonOutlined extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// QUANTITY STEPPER BUTTON — replaces ADD once the item is in the cart
+// QUANTITY STEPPER BUTTON
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _QuantityStepperButton extends StatelessWidget {
@@ -285,28 +361,36 @@ class _QuantityStepperButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
         color: AppColors.primary,
         borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.28),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _StepperIcon(icon: Icons.remove, onTap: onDecrement),
-          SizedBox(
-            width: 24,
+          _StepperIcon(icon: Icons.remove_rounded, onTap: onDecrement),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
               style: AppTextStyles.badge.copyWith(
-                fontSize: 14,
+                fontSize: 13.5,
                 color: AppColors.white,
                 fontWeight: FontWeight.w800,
               ),
             ),
           ),
-          _StepperIcon(icon: Icons.add, onTap: onIncrement),
+          _StepperIcon(icon: Icons.add_rounded, onTap: onIncrement),
         ],
       ),
     );
@@ -320,42 +404,52 @@ class _StepperIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-        child: Icon(icon, color: AppColors.white, size: 16),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(icon, color: AppColors.white, size: 16),
+        ),
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VEG / NON-VEG DOT
+// VEG / NON-VEG BADGE
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _VegDot extends StatelessWidget {
+class _VegBadge extends StatelessWidget {
   final bool isVeg;
-  const _VegDot({required this.isVeg});
+  const _VegBadge({required this.isVeg});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 18,
-      height: 18,
+      width: 17,
+      height: 17,
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: isVeg ? AppColors.success : AppColors.error,
-          width: 1.5,
+          width: 1.4,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: Center(
         child: Container(
-          width: 8,
-          height: 8,
+          width: 7,
+          height: 7,
           decoration: BoxDecoration(
             color: isVeg ? AppColors.success : AppColors.error,
             shape: BoxShape.circle,
@@ -365,3 +459,4 @@ class _VegDot extends StatelessWidget {
     );
   }
 }
+
