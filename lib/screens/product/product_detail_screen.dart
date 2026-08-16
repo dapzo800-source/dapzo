@@ -11,6 +11,7 @@ import '../../models/cart_item_model.dart';
 import '../../services/product_service.dart';
 import '../../services/cart_service.dart';
 import '../../services/favorites_service.dart';
+import '../cart/cart_screen.dart';
 
 /// Product detail page — built to mirror [ShopScreen]'s exact visual
 /// language rather than invent a new one:
@@ -73,6 +74,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     _barRevealed = true;
     // Let the first frame settle, then slide the bar up into view.
     WidgetsBinding.instance.addPostFrameCallback((_) => _barController.forward());
+  }
+
+  void _showAddSheet(BuildContext context, ProductModel product) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ProductAddDetailSheet(
+        product: product,
+        initialQuantity: _quantity,
+      ),
+    );
   }
 
   bool _isVeg(ProductModel product) =>
@@ -555,22 +568,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                 ),
                                 elevation: 0,
                               ),
-                              onPressed: () {
-                                final cartService = context.read<CartService>();
-                                for (var i = 0; i < _quantity; i++) {
-                                  cartService.addItem(CartItemModel.fromProduct(product));
-                                }
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('$_quantity item(s) added to cart'),
-                                    backgroundColor: AppColors.success,
-                                    behavior: SnackBarBehavior.floating,
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
-                              },
+                              onPressed: () => _showAddSheet(context, product),
                               child: Text(
-                                'Add to cart · ₹${(product.price * _quantity).toStringAsFixed(0)}',
+                                'Add to Cart  •  Rs.${(product.price * _quantity).toStringAsFixed(0)}',
                                 style: AppTextStyles.badge.copyWith(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -719,3 +719,348 @@ class _QuantityStepper extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRODUCT ADD DETAIL BOTTOM SHEET
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ProductAddDetailSheet extends StatefulWidget {
+  final ProductModel product;
+  final int initialQuantity;
+
+  const _ProductAddDetailSheet({
+    required this.product,
+    this.initialQuantity = 1,
+  });
+
+  @override
+  State<_ProductAddDetailSheet> createState() => _ProductAddDetailSheetState();
+}
+
+class _ProductAddDetailSheetState extends State<_ProductAddDetailSheet> {
+  late int _quantity;
+  final TextEditingController _notesController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _quantity = widget.initialQuantity.clamp(1, 99);
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final product = widget.product;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: bottomInset),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            const SizedBox(height: 12),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Product image
+            if (product.imageUrl.isNotEmpty)
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                child: CachedNetworkImage(
+                  imageUrl: product.imageUrl,
+                  height: 200,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(
+                    height: 200,
+                    color: AppColors.surfaceVariant,
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    height: 160,
+                    color: AppColors.surfaceVariant,
+                    child: Center(
+                      child: Icon(
+                        product.mode == 'meat'
+                            ? Icons.set_meal_outlined
+                            : Icons.restaurant_outlined,
+                        color: AppColors.textSecondary,
+                        size: 44,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Container(
+                height: 140,
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Icon(
+                    product.mode == 'meat'
+                        ? Icons.set_meal_outlined
+                        : Icons.restaurant_outlined,
+                    color: AppColors.textSecondary,
+                    size: 44,
+                  ),
+                ),
+              ),
+
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Name + price
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          product.name,
+                          style: AppTextStyles.heading.copyWith(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textDark,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Rs.${product.price.toStringAsFixed(0)}',
+                        style: AppTextStyles.price.copyWith(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Category
+                  if (product.category.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      product.category,
+                      style: AppTextStyles.supporting.copyWith(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+
+                  // Description
+                  if (product.description.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      product.description,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.supporting.copyWith(
+                        fontSize: 13.5,
+                        color: AppColors.textMedium,
+                        height: 1.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 18),
+
+                  // Special request box
+                  Text(
+                    'Special Request to Shop',
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _notesController,
+                    maxLines: 2,
+                    maxLength: 150,
+                    style: AppTextStyles.body.copyWith(fontSize: 14),
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      hintText: 'Optional — e.g. less spicy, extra sauce, no onions...',
+                      hintStyle: AppTextStyles.supporting.copyWith(
+                        fontSize: 13,
+                        color: AppColors.textHint,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surfaceVariant,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: AppColors.divider,
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: AppColors.primary.withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                      counterStyle: AppTextStyles.caption.copyWith(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Quantity stepper + Add to Cart
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.primary, width: 1.5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                if (_quantity > 1) setState(() => _quantity--);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 8),
+                                child: Icon(Icons.remove,
+                                    color: AppColors.primary, size: 18),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 24,
+                              child: Text(
+                                '$_quantity',
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.badge.copyWith(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => setState(() => _quantity++),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 8),
+                                child: Icon(Icons.add,
+                                    color: AppColors.primary, size: 18),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () {
+                            final notes = _notesController.text.trim();
+                            final cartService = context.read<CartService>();
+                            cartService.addItem(
+                              CartItemModel(
+                                productId: product.id,
+                                name: product.name,
+                                imageUrl: product.imageUrl,
+                                mode: product.mode,
+                                unitPrice: product.price,
+                                quantity: _quantity,
+                                specialInstructions:
+                                    notes.isNotEmpty ? notes : null,
+                                shopId: product.shopId,
+                                shopName: 'Dapzo Partner Shop',
+                                categoryId: product.category,
+                                subcategoryId: product.subCategory,
+                              ),
+                            );
+                            Navigator.of(context).pop();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const CartScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Add to Cart  \u2022  Rs.${(product.price * _quantity).toStringAsFixed(0)}',
+                            style: AppTextStyles.badge.copyWith(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 28),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

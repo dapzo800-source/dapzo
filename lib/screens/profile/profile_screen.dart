@@ -12,6 +12,7 @@ import 'favorites_screen.dart';
 import 'offers_screen.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
+import 'about_screen.dart';
 import '../home/home_screen.dart';
 
 /// Profile screen — Customer account options and settings.
@@ -161,6 +162,14 @@ class ProfileScreen extends StatelessWidget {
                 iconColor: const Color(0xFF3B82F6),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                ),
+              ),
+              _MenuTile(
+                icon: Icons.info_outline_rounded,
+                label: 'About Dapzo',
+                iconColor: const Color(0xFF6366F1),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AboutScreen()),
                 ),
               ),
               _MenuTile(

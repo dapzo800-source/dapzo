@@ -11,6 +11,7 @@ import '../../services/cart_service.dart';
 import '../../widgets/product_list_card.dart';
 import '../../widgets/animated_cart_bar.dart';
 import '../product/product_detail_screen.dart';
+import '../cart/cart_screen.dart';
 
 /// Full shop page showing all products from a single shop, grouped by category.
 class ShopScreen extends StatefulWidget {
@@ -396,11 +397,11 @@ class _ShopScreenState extends State<ShopScreen> {
                                     builder: (_) => ProductDetailScreen(productId: product.id),
                                   ),
                                 ),
-                                onAdd: () {
-                                  context.read<CartService>().addItem(
-                                        CartItemModel.fromProduct(product, shopName: shopName),
-                                      );
-                                },
+                                onAdd: () => _showProductAddSheet(
+                                  context,
+                                  product: product,
+                                  shopName: shopName,
+                                ),
                               ),
                             );
                           },
@@ -469,11 +470,11 @@ class _ShopScreenState extends State<ShopScreen> {
                                       builder: (_) => ProductDetailScreen(productId: product.id),
                                     ),
                                   ),
-                                  onAdd: () {
-                                    context.read<CartService>().addItem(
-                                          CartItemModel.fromProduct(product, shopName: shopName),
-                                        );
-                                  },
+                                  onAdd: () => _showProductAddSheet(
+                                    context,
+                                    product: product,
+                                    shopName: shopName,
+                                  ),
                                 ),
                               );
                             },
@@ -499,6 +500,22 @@ class _ShopScreenState extends State<ShopScreen> {
     final n = (count is num) ? count.toInt() : int.tryParse('$count') ?? 0;
     if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
     return '$n';
+  }
+
+  void _showProductAddSheet(
+    BuildContext context, {
+    required ProductModel product,
+    required String shopName,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ProductAddSheet(
+        product: product,
+        shopName: shopName,
+      ),
+    );
   }
 }
 
@@ -552,6 +569,304 @@ class _FeatureChip extends StatelessWidget {
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: AppColors.textMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRODUCT ADD BOTTOM SHEET
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ProductAddSheet extends StatefulWidget {
+  final ProductModel product;
+  final String shopName;
+
+  const _ProductAddSheet({
+    required this.product,
+    required this.shopName,
+  });
+
+  @override
+  State<_ProductAddSheet> createState() => _ProductAddSheetState();
+}
+
+class _ProductAddSheetState extends State<_ProductAddSheet> {
+  int _quantity = 1;
+  final TextEditingController _notesController = TextEditingController();
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final product = widget.product;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: bottomInset),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          const SizedBox(height: 12),
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Product image
+          if (product.imageUrl.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: CachedNetworkImage(
+                imageUrl: product.imageUrl,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorWidget: (_, __, ___) => Container(
+                  height: 180,
+                  color: AppColors.surfaceVariant,
+                  child: const Center(
+                    child: Icon(Icons.restaurant_outlined,
+                        color: AppColors.textSecondary, size: 40),
+                  ),
+                ),
+              ),
+            )
+          else
+            Container(
+              height: 140,
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Center(
+                child: Icon(Icons.restaurant_outlined,
+                    color: AppColors.textSecondary, size: 40),
+              ),
+            ),
+
+          // Product details
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        product.name,
+                        style: AppTextStyles.heading.copyWith(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Rs.${product.price.toStringAsFixed(0)}',
+                      style: AppTextStyles.price.copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                if (product.category.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    product.category,
+                    style: AppTextStyles.supporting.copyWith(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+                if (product.description.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    product.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.supporting.copyWith(
+                      fontSize: 13,
+                      color: AppColors.textMedium,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 16),
+
+                // Special request / notes box
+                TextField(
+                  controller: _notesController,
+                  maxLines: 2,
+                  maxLength: 150,
+                  style: AppTextStyles.body.copyWith(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Special request to shop (optional) — e.g. less spicy, extra sauce...',
+                    hintStyle: AppTextStyles.supporting.copyWith(
+                      fontSize: 13,
+                      color: AppColors.textHint,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surfaceVariant,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: AppColors.divider,
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.5),
+                        width: 1.5,
+                      ),
+                    ),
+                    counterStyle: AppTextStyles.caption.copyWith(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Quantity + Add to Cart row
+                Row(
+                  children: [
+                    // Quantity stepper
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.primary, width: 1.5),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              if (_quantity > 1) setState(() => _quantity--);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              child: Icon(Icons.remove,
+                                  color: AppColors.primary, size: 18),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 24,
+                            child: Text(
+                              '$_quantity',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.badge.copyWith(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => setState(() => _quantity++),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              child: Icon(Icons.add,
+                                  color: AppColors.primary, size: 18),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Add to Cart button
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: () {
+                          final notes = _notesController.text.trim();
+                          final cartService = context.read<CartService>();
+                          cartService.addItem(
+                            CartItemModel(
+                              productId: product.id,
+                              name: product.name,
+                              imageUrl: product.imageUrl,
+                              mode: product.mode,
+                              unitPrice: product.price,
+                              quantity: _quantity,
+                              specialInstructions: notes.isNotEmpty ? notes : null,
+                              shopId: product.shopId,
+                              shopName: widget.shopName,
+                              categoryId: product.category,
+                              subcategoryId: product.subCategory,
+                            ),
+                          );
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const CartScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Add to Cart  •  Rs.${(product.price * _quantity).toStringAsFixed(0)}',
+                          style: AppTextStyles.badge.copyWith(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+              ],
             ),
           ),
         ],

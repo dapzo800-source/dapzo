@@ -337,6 +337,19 @@ class OrderService {
   }
 
   // ----------------------------------------------------------------
+  // CANCEL ORDER
+  // ----------------------------------------------------------------
+
+  /// Cancels an order by updating its status to 'cancelled' in Firestore.
+  /// Only call this when the order status is still `placed` or `shopAccepted`.
+  Future<void> cancelOrder(String orderId) async {
+    await _db.collection('orders').doc(orderId).update({
+      'status': OrderStatus.cancelled.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ----------------------------------------------------------------
   // COUPONS
   // ----------------------------------------------------------------
 
