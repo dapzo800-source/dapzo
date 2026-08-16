@@ -1134,10 +1134,13 @@ class _CategoryRow extends StatelessWidget {
                           ],
                         ),
                         child: ClipOval(
-                          child: imageUrl.isNotEmpty
+                          child: (imageUrl.isNotEmpty && !imageUrl.contains('dxyz123abc'))
                               ? CachedNetworkImage(
                                   imageUrl: imageUrl,
                                   fit: BoxFit.cover,
+                                  placeholder: (_, __) => Container(
+                                    color: accentColor.withValues(alpha: 0.1),
+                                  ),
                                   errorWidget: (_, __, ___) => Icon(
                                     Icons.restaurant_rounded,
                                     color: accentColor,
@@ -1252,7 +1255,7 @@ class _PopularShopCard extends StatelessWidget {
                       const BorderRadius.vertical(top: Radius.circular(20)),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
-                    child: imageUrl.isNotEmpty
+                    child: (imageUrl.isNotEmpty && !imageUrl.contains('dxyz123abc'))
                         ? CachedNetworkImage(
                             imageUrl: imageUrl,
                             fit: BoxFit.cover,

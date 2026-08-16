@@ -14,7 +14,7 @@ import 'package:provider/provider.dart';
 import 'mode_selection_screen.dart';
 
 /// Collects Name / Email / Date of Birth / (optional) Photo for a user.
-/// Phone number is NOT re-asked here — it already comes from Firebase Auth.
+/// Phone number is NOT re-asked here — it already comes from Firebase Auth or MSG91 verification.
 class ProfileSetupScreen extends StatefulWidget {
   final bool isEditing;
   const ProfileSetupScreen({super.key, this.isEditing = false});
@@ -95,13 +95,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.textSecondary.withOpacity(0.3),
+                  color: AppColors.textSecondary.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
               const SizedBox(height: 12),
               ListTile(
-                leading: Icon(Icons.photo_camera_outlined, color: AppColors.primary),
+                leading: const Icon(Icons.photo_camera_outlined, color: AppColors.primary),
                 title: const Text('Take Photo'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
@@ -109,7 +109,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.photo_library_outlined, color: AppColors.primary),
+                leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
                 title: const Text('Choose from Gallery'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
@@ -118,8 +118,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
               if (hasPhoto)
                 ListTile(
-                  leading: Icon(Icons.delete_outline, color: AppColors.error),
-                  title: Text('Remove Photo', style: TextStyle(color: AppColors.error)),
+                  leading: const Icon(Icons.delete_outline, color: AppColors.error),
+                  title: const Text('Remove Photo', style: TextStyle(color: AppColors.error)),
                   onTap: () {
                     Navigator.of(sheetContext).pop();
                     setState(() {
@@ -180,15 +180,32 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return;
     }
 
+    final appState = context.read<AppState>();
     setState(() => _loading = true);
 
     try {
-      final user = FirebaseAuth.instance.currentUser!;
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        try {
+          final userCred = await FirebaseAuth.instance.signInAnonymously();
+          user = userCred.user;
+        } catch (e) {
+          debugPrint('ProfileSetup anonymous auth error: $e');
+        }
+      }
+
+      final storedUid = await _authService.getCurrentOrStoredUid();
+      final uid = user?.uid ?? storedUid ?? 'dapzo_user_${DateTime.now().millisecondsSinceEpoch}';
+
       final photoUrl = await _resolvePhotoUrl();
+      final cachedPhone = await _authService.getCachedPhone();
+      final phone = (user?.phoneNumber != null && user!.phoneNumber!.isNotEmpty)
+          ? user.phoneNumber!
+          : (cachedPhone ?? appState.user?.phone ?? '');
 
       final profile = UserModel(
-        uid: user.uid,
-        phone: user.phoneNumber ?? '',
+        uid: uid,
+        phone: phone,
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         dateOfBirth: _dob,
@@ -237,10 +254,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           children: [
             CircleAvatar(
               radius: 48,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
               backgroundImage: imageProvider,
               child: imageProvider == null
-                  ? Icon(Icons.person, size: 44, color: AppColors.primary)
+                  ? const Icon(Icons.person, size: 44, color: AppColors.primary)
                   : null,
             ),
             Positioned(
@@ -266,14 +283,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     return InputDecoration(
       hintText: hint,
       filled: true,
-      fillColor: AppColors.textSecondary.withOpacity(0.06),
+      fillColor: AppColors.textSecondary.withValues(alpha: 0.06),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+      focusedBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
         borderSide: BorderSide(color: AppColors.primary, width: 1.5),
       ),
     );

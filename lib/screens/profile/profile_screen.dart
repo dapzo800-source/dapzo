@@ -51,7 +51,7 @@ class ProfileScreen extends StatelessWidget {
           // ── Header Profile Card ──
           GestureDetector(
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => ProfileSetupScreen(isEditing: true)),
+              MaterialPageRoute(builder: (_) => const ProfileSetupScreen(isEditing: true)),
             ),
             child: Container(
               padding: const EdgeInsets.all(20),
@@ -104,7 +104,7 @@ class ProfileScreen extends StatelessWidget {
                       color: AppColors.surfaceVariant,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
+                    child: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
                   ),
                 ],
               ),

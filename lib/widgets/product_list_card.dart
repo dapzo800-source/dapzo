@@ -106,7 +106,7 @@ class _ProductListCardState extends State<ProductListCard>
                     child: SizedBox(
                       width: 100,
                       height: 100,
-                      child: product.imageUrl.isNotEmpty
+                      child: (product.imageUrl.isNotEmpty && !product.imageUrl.contains('dxyz123abc'))
                           ? CachedNetworkImage(
                               imageUrl: product.imageUrl,
                               fit: BoxFit.cover,

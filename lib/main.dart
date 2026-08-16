@@ -8,6 +8,7 @@ import 'theme/theme.dart';
 import 'theme/app_colors.dart';
 import 'state/app_state.dart';
 import 'services/cart_service.dart';
+import 'services/msg91_otp_service.dart';
 import 'screens/auth/splash_screen.dart';
 
 Future<void> main() async {
@@ -18,6 +19,8 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('dotenv load note: $e');
   }
+
+  Msg91OtpService.init();
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,

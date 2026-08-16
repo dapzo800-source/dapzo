@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../theme/app_colors.dart';
-import '../../theme/app_text_styles.dart';
 import 'phone_login_screen.dart';
 
 class _OnboardData {
-  final IconData icon;
+  final String image;
   final String title;
   final String subtitle;
-  final Color accent;
 
-  _OnboardData(this.icon, this.title, this.subtitle, this.accent);
+  _OnboardData(this.image, this.title, this.subtitle);
 }
 
 class OnboardingScreen extends StatefulWidget {
@@ -26,22 +25,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<_OnboardData> _pages = [
     _OnboardData(
-      Icons.ramen_dining_outlined,
+      'assets/images/fresh_food.png',
       'Fresh Food\nDelivered Fast',
       'Discover delicious food from nearby shops.',
-      AppColors.primary,
     ),
     _OnboardData(
-      Icons.kebab_dining,
+      'assets/images/fresh_meat.png',
       'Fresh Meat\nAt Your Door',
       'Choose quality meat from nearby stores.',
-      AppColors.meatRed,
     ),
     _OnboardData(
-      Icons.delivery_dining,
+      'assets/images/easy_ordering.png',
       'Easy Ordering',
       'Order, pay and track everything from Dapzo.',
-      AppColors.primary,
     ),
   ];
 
@@ -77,7 +73,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: TextButton(
                   onPressed: _goToLogin,
-                  child: Text('Skip', style: AppTextStyles.body.copyWith(color: AppColors.white)),
+                  child: Text(
+                    'Skip',
+                    style: GoogleFonts.poppins(
+                      color: AppColors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -93,26 +96,35 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          width: 140,
-                          height: 140,
-                          decoration: const BoxDecoration(
-                            color: AppColors.white,
-                            shape: BoxShape.circle,
+                        SizedBox(
+                          width: 220,
+                          height: 220,
+                          child: Image.asset(
+                            page.image,
+                            fit: BoxFit.contain,
                           ),
-                          child: Icon(page.icon, size: 64, color: page.accent),
                         ),
                         const SizedBox(height: 36),
                         Text(
                           page.title,
                           textAlign: TextAlign.center,
-                          style: AppTextStyles.heading.copyWith(color: AppColors.white),
+                          style: GoogleFonts.poppins(
+                            color: AppColors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            height: 1.3,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Text(
                           page.subtitle,
                           textAlign: TextAlign.center,
-                          style: AppTextStyles.supporting.copyWith(fontSize: 14, color: AppColors.white),
+                          style: GoogleFonts.poppins(
+                            color: AppColors.white.withOpacity(0.9),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            height: 1.4,
+                          ),
                         ),
                       ],
                     ),
@@ -140,8 +152,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.white,
                     foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: Text(isLast ? 'Get Started' : 'Next'),
+                  child: Text(
+                    isLast ? 'Get Started' : 'Next',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ),

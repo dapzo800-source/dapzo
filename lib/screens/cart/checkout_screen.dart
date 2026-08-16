@@ -568,7 +568,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
           decoration: BoxDecoration(
-            color: AppColors.primaryLight,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
