@@ -35,7 +35,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
 
     await _authService.sendOtp(
       phoneNumber: phone,
-      onCodeSent: (String reqId) {
+      onCodeSent: (String reqId, String generatedOtp) {
         if (!mounted) return;
 
         setState(() {
@@ -47,6 +47,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
             builder: (_) => OtpVerificationScreen(
               phoneNumber: phone,
               verificationId: reqId,
+              initialOtp: generatedOtp,
             ),
           ),
         );

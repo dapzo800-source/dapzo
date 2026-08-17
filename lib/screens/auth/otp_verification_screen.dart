@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:pin_code_fields/pin_code_fields.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../theme/app_colors.dart';
@@ -13,23 +13,26 @@ import 'profile_setup_screen.dart';
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
   final String verificationId;
+  final String? initialOtp;
 
   const OtpVerificationScreen({
     super.key,
     required this.phoneNumber,
     required this.verificationId,
+    this.initialOtp,
   });
 
   @override
-  State<OtpVerificationScreen> createState() =>
-      _OtpVerificationScreenState();
+  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
-class _OtpVerificationScreenState
-    extends State<OtpVerificationScreen> {
+class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final AuthService _authService = AuthService();
+  final TextEditingController _otpController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   String _otp = '';
+  String? _displayedOtp;
   bool _loading = false;
   bool _resending = false;
   String? _error;
@@ -42,12 +45,15 @@ class _OtpVerificationScreenState
   void initState() {
     super.initState();
     _currentVerificationId = widget.verificationId;
+    _displayedOtp = widget.initialOtp;
     _startResendTimer();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _otpController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -80,48 +86,30 @@ class _OtpVerificationScreenState
     });
 
     try {
-      final success = await _authService.resendOtp(
+      final newOtp = await _authService.resendOtp(
+        phoneNumber: widget.phoneNumber,
         reqId: _currentVerificationId,
       );
 
       if (!mounted) return;
 
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('OTP resent successfully via SMS.'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        _startResendTimer();
-      } else {
-        await _authService.sendOtp(
-          phoneNumber: widget.phoneNumber,
-          onCodeSent: (newReqId) {
-            if (!mounted) return;
-            setState(() {
-              _currentVerificationId = newReqId;
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('New OTP sent successfully.'),
-                backgroundColor: AppColors.success,
-              ),
-            );
-            _startResendTimer();
-          },
-          onError: (err) {
-            if (!mounted) return;
-            setState(() {
-              _error = err;
-            });
-          },
-        );
-      }
+      setState(() {
+        _displayedOtp = newOtp;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('New OTP generated: $newOtp'),
+          backgroundColor: AppColors.success,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
+      _startResendTimer();
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Failed to resend OTP. Please try again.';
+        _error = 'Failed to generate new OTP. Please try again.';
       });
     } finally {
       if (mounted) {
@@ -132,10 +120,22 @@ class _OtpVerificationScreenState
     }
   }
 
-  Future<void> _verify() async {
-    if (_otp.length < 4) {
+  void _autoFillOtp() {
+    if (_displayedOtp != null && _displayedOtp!.isNotEmpty) {
+      _otpController.text = _displayedOtp!;
       setState(() {
-        _error = 'Please enter the complete verification code';
+        _otp = _displayedOtp!;
+        _error = null;
+      });
+      _verify();
+    }
+  }
+
+  Future<void> _verify() async {
+    final code = _otpController.text.trim();
+    if (code.length < 4) {
+      setState(() {
+        _error = 'Please enter the 6-digit OTP code';
       });
       return;
     }
@@ -150,15 +150,15 @@ class _OtpVerificationScreenState
     try {
       final String uid = await _authService.verifyOtp(
         verificationId: _currentVerificationId,
-        smsCode: _otp,
+        smsCode: code,
         phoneNumber: widget.phoneNumber,
       );
 
-      debugPrint('MSG91 OTP Verification Success for UID: $uid');
+      debugPrint('Direct OTP Verification Success for UID: $uid');
 
       bool isNewUser;
       try {
-        isNewUser = await _authService.isNewUser(uid);
+        isNewUser = await _authService.isNewUser(uid, phone: widget.phoneNumber);
       } catch (e) {
         isNewUser = true;
       }
@@ -174,7 +174,7 @@ class _OtpVerificationScreenState
         );
       } else {
         try {
-          final profile = await _authService.getUserProfile(uid);
+          final profile = await _authService.getUserProfile(uid, phone: widget.phoneNumber);
           if (profile != null && mounted) {
             context.read<AppState>().setUser(profile);
           }
@@ -194,14 +194,94 @@ class _OtpVerificationScreenState
       if (!mounted) return;
       final errMsg = e.toString().replaceAll('Exception: ', '');
       setState(() {
-        _error = errMsg.isNotEmpty ? errMsg : 'Invalid OTP. Please check and try again.';
+        _error = errMsg.isNotEmpty ? errMsg : 'Invalid OTP code. Please try again.';
         _loading = false;
       });
     }
   }
 
+  Widget _buildDigitBoxes() {
+    return GestureDetector(
+      onTap: () => _focusNode.requestFocus(),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Invisible actual text input
+          Opacity(
+            opacity: 0.0,
+            child: TextField(
+              controller: _otpController,
+              focusNode: _focusNode,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (val) {
+                setState(() {
+                  _otp = val;
+                  _error = null;
+                });
+                if (val.length == 6) {
+                  _verify();
+                }
+              },
+            ),
+          ),
+
+          // Custom styled digit boxes with dark theme
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(6, (index) {
+              final isFilled = index < _otp.length;
+              final isFocused = _focusNode.hasFocus && index == _otp.length;
+              final char = isFilled ? _otp[index] : '';
+
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 44,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isFocused
+                        ? AppColors.primary
+                        : isFilled
+                            ? AppColors.primary.withValues(alpha: 0.7)
+                            : const Color(0xFF334155),
+                    width: isFocused || isFilled ? 1.8 : 1.2,
+                  ),
+                  boxShadow: isFocused
+                      ? [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Center(
+                  child: Text(
+                    char,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cleanPhone = widget.phoneNumber;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       extendBodyBehindAppBar: true,
@@ -222,7 +302,7 @@ class _OtpVerificationScreenState
       ),
       body: Stack(
         children: [
-          // ── Premium Dark Background Overlay ──
+          // ── Gradient Background ──
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
@@ -239,9 +319,9 @@ class _OtpVerificationScreenState
             ),
           ),
 
-          // ── Subtle Ambient Glow Behind Logo ──
+          // ── Ambient Glow ──
           Positioned(
-            top: 60,
+            top: 70,
             left: 0,
             right: 0,
             child: Center(
@@ -250,11 +330,11 @@ class _OtpVerificationScreenState
                 height: 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withValues(alpha: 0.18),
+                  color: AppColors.primary.withValues(alpha: 0.15),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.25),
-                      blurRadius: 70,
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                      blurRadius: 65,
                       spreadRadius: 20,
                     ),
                   ],
@@ -276,17 +356,17 @@ class _OtpVerificationScreenState
                       tag: 'dapzo_logo',
                       child: Image.asset(
                         'assets/images/app_logo.png',
-                        height: 95,
+                        height: 90,
                         fit: BoxFit.contain,
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
 
                     // ── Card Container ──
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B).withValues(alpha: 0.8),
+                        color: const Color(0xFF1E293B).withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.1),
@@ -294,7 +374,7 @@ class _OtpVerificationScreenState
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.35),
+                            color: Colors.black.withValues(alpha: 0.4),
                             blurRadius: 24,
                             offset: const Offset(0, 10),
                           ),
@@ -312,169 +392,100 @@ class _OtpVerificationScreenState
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Enter the 6-digit code sent to',
+                            'Verification code for $cleanPhone',
                             style: AppTextStyles.supporting.copyWith(
                               color: const Color(0xFF94A3B8),
                               fontSize: 13,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 18),
 
-                          // ── Phone Number Badge with Edit Option ──
-                          InkWell(
-                            onTap: () => Navigator.maybePop(context),
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          // ── In-App Generated OTP Helper Card ──
+                          if (_displayedOtp != null && _displayedOtp!.isNotEmpty)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 20),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(8),
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.12),
+                                  color: AppColors.primary.withValues(alpha: 0.35),
                                 ),
                               ),
                               child: Row(
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.phone_iphone_rounded,
-                                      size: 16, color: AppColors.primaryLight),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    widget.phoneNumber,
-                                    style: AppTextStyles.body.copyWith(
-                                      color: AppColors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
+                                  const Icon(
+                                    Icons.mark_email_read_outlined,
+                                    color: AppColors.primary,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Generated OTP Code',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Color(0xFF94A3B8),
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          _displayedOtp!,
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 4.0,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.edit_rounded,
-                                      size: 14, color: Color(0xFF94A3B8)),
+                                  TextButton.icon(
+                                    onPressed: _autoFillOtp,
+                                    icon: const Icon(Icons.touch_app_rounded, size: 16),
+                                    label: const Text('Fill OTP'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.primary,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      backgroundColor: Colors.white.withValues(alpha: 0.08),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                          ),
 
-                          const SizedBox(height: 24),
+                          // ── Custom Dark Digit Entry Boxes (No White Box Bug) ──
+                          _buildDigitBoxes(),
 
-                          // ── 6-Digit PIN Code Input ──
-                          PinCodeTextField(
-                            appContext: context,
-                            backgroundColor: Colors.transparent,
-                            cursorColor: AppColors.primaryLight,
-                            length: 6,
-                            keyboardType: TextInputType.number,
-                            animationType: AnimationType.scale,
-                            textStyle: AppTextStyles.heading.copyWith(
-                              color: AppColors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            onChanged: (value) {
-                              setState(() {
-                                _otp = value;
-                                _error = null;
-                              });
-                            },
-                            onCompleted: (value) {
-                              setState(() {
-                                _otp = value;
-                              });
-                              _verify();
-                            },
-                            enableActiveFill: true,
-                            pinTheme: PinTheme(
-                              shape: PinCodeFieldShape.box,
-                              borderRadius: BorderRadius.circular(12),
-                              fieldHeight: 50,
-                              fieldWidth: 44,
-                              borderWidth: 1.5,
-                              activeColor: AppColors.primary,
-                              selectedColor: AppColors.primaryLight,
-                              inactiveColor: Colors.white.withValues(alpha: 0.18),
-                              activeFillColor: const Color(0xFF0F172A),
-                              selectedFillColor: const Color(0xFF0F172A),
-                              inactiveFillColor: const Color(0xFF0F172A).withValues(alpha: 0.6),
-                            ),
-                          ),
-
-                          // ── Error Alert ──
+                          // ── Error Message ──
                           if (_error != null) ...[
                             const SizedBox(height: 10),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: AppColors.error.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: AppColors.error.withValues(alpha: 0.4),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.error_outline_rounded,
-                                      size: 16, color: AppColors.error),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _error!,
-                                      style: AppTextStyles.caption.copyWith(
-                                        color: const Color(0xFFFCA5A5),
-                                        fontSize: 12,
-                                      ),
+                            Row(
+                              children: [
+                                const Icon(Icons.error_outline_rounded,
+                                    size: 16, color: AppColors.error),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: const TextStyle(
+                                      color: AppColors.error,
+                                      fontSize: 12,
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ],
-
-                          const SizedBox(height: 16),
-
-                          // ── Resend Countdown Row ──
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _resendCountdown > 0
-                                    ? 'Resend OTP in ${_resendCountdown}s'
-                                    : "Didn't receive code?",
-                                style: AppTextStyles.supporting.copyWith(
-                                  color: const Color(0xFF94A3B8),
-                                  fontSize: 12.5,
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: (_resendCountdown == 0 && !_resending)
-                                    ? _resendOtp
-                                    : null,
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                ),
-                                child: _resending
-                                    ? const SizedBox(
-                                        width: 14,
-                                        height: 14,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: AppColors.primary,
-                                        ),
-                                      )
-                                    : Text(
-                                        'Resend',
-                                        style: AppTextStyles.body.copyWith(
-                                          color: _resendCountdown == 0
-                                              ? AppColors.primaryLight
-                                              : const Color(0xFF64748B),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 22),
 
                           // ── Verify Button ──
                           SizedBox(
@@ -484,54 +495,67 @@ class _OtpVerificationScreenState
                               onPressed: _loading ? null : _verify,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
-                                foregroundColor: AppColors.white,
-                                elevation: 4,
-                                shadowColor: AppColors.primary.withValues(alpha: 0.5),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
                               child: _loading
                                   ? const SizedBox(
-                                      height: 22,
                                       width: 22,
+                                      height: 22,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2.5,
-                                        color: AppColors.white,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(Colors.white),
                                       ),
                                     )
-                                  : Text(
-                                      'Verify & Proceed',
-                                      style: AppTextStyles.body.copyWith(
-                                        color: AppColors.white,
+                                  : const Text(
+                                      'Verify & Continue',
+                                      style: TextStyle(
+                                        fontSize: 16,
                                         fontWeight: FontWeight.w700,
-                                        fontSize: 15,
-                                        letterSpacing: 0.3,
                                       ),
                                     ),
                             ),
                           ),
+                          const SizedBox(height: 18),
+
+                          // ── Resend Code Row ──
+                          Center(
+                            child: _resendCountdown > 0
+                                ? Text(
+                                    'Resend OTP in ${_resendCountdown}s',
+                                    style: const TextStyle(
+                                      color: Color(0xFF94A3B8),
+                                      fontSize: 13,
+                                    ),
+                                  )
+                                : TextButton(
+                                    onPressed: _resending ? null : _resendOtp,
+                                    child: _resending
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                  AppColors.primary),
+                                            ),
+                                          )
+                                        : const Text(
+                                            'Resend OTP',
+                                            style: TextStyle(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                  ),
+                          ),
                         ],
                       ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // ── Trust Badge ──
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.shield_outlined,
-                            size: 14, color: Color(0xFF64748B)),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Secure Login with MSG91',
-                          style: AppTextStyles.caption.copyWith(
-                            color: const Color(0xFF64748B),
-                            fontSize: 11.5,
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),

@@ -8,10 +8,10 @@ import 'package:sendotp_flutter_sdk/sendotp_flutter_sdk.dart';
 /// Cloudflare Worker proxy fallback and resilience.
 ///
 /// Configured with:
-/// - widgetId: 366865674145323034343432
+/// - widgetId: 366865677a4c393738333833
 /// - authToken: 557300TG9qQLew6a72e347P1
 class Msg91OtpService {
-  static const String _defaultWidgetId = '366865674145323034343432';
+  static const String _defaultWidgetId = '366865677a4c393738333833';
   static const String _defaultAuthToken = '557300TG9qQLew6a72e347P1';
 
   static const String _baseUrl = 'https://api.msg91.com/api/v5/widget';

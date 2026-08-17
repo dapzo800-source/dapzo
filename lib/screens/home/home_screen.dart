@@ -14,7 +14,7 @@ import '../../state/app_state.dart';
 import '../../services/cart_service.dart';
 import '../../widgets/search_bar.dart';
 
-import '../location/select_location_screen.dart';
+import '../location/map_location_picker_screen.dart';
 import '../orders/orders_screen.dart';
 import '../orders/order_tracking_screen.dart';
 import '../profile/profile_screen.dart';
@@ -22,6 +22,10 @@ import '../cart/cart_screen.dart';
 import 'category_screen.dart';
 import '../auth/profile_setup_screen.dart';
 import 'shop_screen.dart';
+import '../../models/address_model.dart';
+import '../../models/product_model.dart';
+import '../../models/cart_item_model.dart';
+import '../../services/location_service.dart';
 
 // ============================================================================
 // HOME SCREEN (Bottom Nav Host)
@@ -247,10 +251,25 @@ class _HomeTabState extends State<_HomeTab> {
     _orderService = OrderService();
   }
 
+  void _openMapPicker() async {
+    final appState = context.read<AppState>();
+    final selected = await Navigator.of(context).push<AddressModel?>(
+      MaterialPageRoute(
+        builder: (_) => MapLocationPickerScreen(
+          initialAddress: appState.selectedAddress,
+        ),
+      ),
+    );
+    if (selected != null && mounted) {
+      context.read<AppState>().setSelectedAddress(selected);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final mode = appState.mode;
+    final selectedCategory = appState.selectedCategory;
     final currentUid = FirebaseAuth.instance.currentUser?.uid ?? appState.user?.uid ?? '';
 
     return Container(
@@ -271,11 +290,13 @@ class _HomeTabState extends State<_HomeTab> {
               ),
             ),
 
-          // ── Mode Toggle ──────────────────────────────────────────────────
+          // ── Mode Toggle (Food vs Meat) ───────────────────────────────────
           SliverToBoxAdapter(
             child: _ModeToggle(
               selected: mode,
-              onChanged: appState.setMode,
+              onChanged: (newMode) {
+                appState.setMode(newMode);
+              },
             ),
           ),
 
@@ -287,7 +308,7 @@ class _HomeTabState extends State<_HomeTab> {
           // ── Categories Header ────────────────────────────────────────────
           SliverToBoxAdapter(
             child: _SectionHeader(
-              title: 'Categories',
+              title: mode == 'meat' ? 'Meat Categories' : 'Food Categories',
               onSeeAll: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => CategoryScreen(
                   mode: mode,
@@ -298,89 +319,207 @@ class _HomeTabState extends State<_HomeTab> {
             ),
           ),
 
-          // ── Category Row ─────────────────────────────────────────────────
+          // ── Category Row with Live Filter Selection ───────────────────────
           SliverToBoxAdapter(
-            child: _CategoryRow(mode: mode, productService: _productService),
-          ),
-
-          // ── Popular Shops ─────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: _SectionHeader(title: 'Popular Shops', onSeeAll: null),
-          ),
-
-          // ── Popular Shops List (from Firestore) ─────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _shopService.streamShops(mode),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return SliverToBoxAdapter(
-                    child: _ErrorBox(error: snapshot.error.toString()),
-                  );
-                }
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                  );
-                }
-
-                final popularShops = snapshot.data ?? [];
-                if (popularShops.isEmpty) {
-                  return SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 48),
-                      child: Center(
-                        child: Text(
-                          'No shops yet.\nAdd shops in Firestore to populate this list.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                // Filter & Sort Shops
-                var sorted = [...popularShops];
-                if (appState.isNearAndFast) {
-                  sorted = sorted.where((s) {
-                    final time = (s['deliveryTime'] as num?)?.toInt() ?? 999;
-                    return time <= 30; // Assuming <=30 mins is fast
-                  }).toList();
-                }
-                sorted.sort((a, b) {
-                    final ra = (a['rating'] as num?)?.toDouble() ?? 0.0;
-                    final rb = (b['rating'] as num?)?.toDouble() ?? 0.0;
-                    return rb.compareTo(ra);
-                  });
-
-                return SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final shop = sorted[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _PopularShopCard(
-                          shop: shop,
-                          selectedAddress: appState.selectedAddress,
-                          shopService: _shopService,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => ShopScreen(shop: shop),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    childCount: sorted.length,
-                  ),
-                );
+            child: _CategoryRow(
+              mode: mode,
+              productService: _productService,
+              selectedCategory: selectedCategory,
+              onCategorySelected: (catName) {
+                appState.setSelectedCategory(catName);
               },
             ),
+          ),
+
+          // ── Stream Shops to Determine Serviceability & Listings ───────────
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _shopService.streamShops(
+              mode,
+              customerLat: appState.selectedAddress?.latitude,
+              customerLng: appState.selectedAddress?.longitude,
+            ),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return SliverToBoxAdapter(
+                  child: _ErrorBox(error: snapshot.error.toString()),
+                );
+              }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                );
+              }
+
+              final popularShops = snapshot.data ?? [];
+
+              // ── Dedicated Unserviceable View if No Shops Available in Location ──
+              if (popularShops.isEmpty) {
+                return SliverToBoxAdapter(
+                  child: _DeliveryNotAvailableView(
+                    selectedAddress: appState.selectedAddress,
+                    onChangeLocation: _openMapPicker,
+                    onUseGps: () async {
+                      try {
+                        final pos = await LocationService().getCurrentPosition();
+                        final isServiceable = await LocationService().checkServiceability(
+                          latitude: pos.latitude,
+                          longitude: pos.longitude,
+                        );
+                        if (!isServiceable) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Delivery is not available at your current GPS location yet.'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                          return;
+                        }
+                        final autoAddress = AddressModel(
+                          id: 'gps_${DateTime.now().millisecondsSinceEpoch}',
+                          label: 'Current GPS',
+                          name: FirebaseAuth.instance.currentUser?.displayName ?? 'My Location',
+                          phone: FirebaseAuth.instance.currentUser?.phoneNumber ?? '',
+                          address: 'Current Detected Location',
+                          area: 'Service Area',
+                          city: 'Karnataka',
+                          pincode: '',
+                          latitude: pos.latitude,
+                          longitude: pos.longitude,
+                        );
+                        if (context.mounted) {
+                          appState.setSelectedAddress(autoAddress);
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('GPS Error: $e'), backgroundColor: AppColors.error),
+                          );
+                        }
+                      }
+                    },
+                    onSelectHub: (hub) {
+                      final hubAddress = AddressModel(
+                        id: 'hub_${hub['name']}',
+                        label: hub['name'] as String,
+                        name: 'Service Hub',
+                        phone: '',
+                        address: '${hub['name']}, ${hub['taluk']}',
+                        area: hub['name'] as String,
+                        city: hub['taluk'] as String,
+                        pincode: '',
+                        latitude: hub['lat'] as double,
+                        longitude: hub['lng'] as double,
+                      );
+                      appState.setSelectedAddress(hubAddress);
+                    },
+                  ),
+                );
+              }
+
+              // ── Filter Shops by Category if Selected ──
+              var filteredShops = [...popularShops];
+              if (selectedCategory != null && selectedCategory.isNotEmpty && selectedCategory.toLowerCase() != 'all') {
+                final catLower = selectedCategory.toLowerCase();
+                filteredShops = filteredShops.where((shop) {
+                  final shopName = (shop['name'] ?? '').toString().toLowerCase();
+                  final tagline = (shop['tagline'] ?? '').toString().toLowerCase();
+                  final categoriesList = (shop['categories'] as List?)?.map((c) => c.toString().toLowerCase()).toList() ?? [];
+                  return shopName.contains(catLower) ||
+                      tagline.contains(catLower) ||
+                      categoriesList.any((c) => c.contains(catLower));
+                }).toList();
+                // If filter is specific but no shop tagged directly, show all eligible shops that serve the mode
+                if (filteredShops.isEmpty) {
+                  filteredShops = popularShops;
+                }
+              }
+
+              if (appState.isNearAndFast) {
+                filteredShops = filteredShops.where((s) {
+                  final time = (s['deliveryTime'] as num?)?.toInt() ?? 999;
+                  return time <= 30;
+                }).toList();
+              }
+
+              filteredShops.sort((a, b) {
+                final ra = (a['rating'] as num?)?.toDouble() ?? 0.0;
+                final rb = (b['rating'] as num?)?.toDouble() ?? 0.0;
+                return rb.compareTo(ra);
+              });
+
+              return SliverMainAxisGroup(
+                slivers: [
+                  // ── Live Featured Products for Mode & Selected Category ──
+                  SliverToBoxAdapter(
+                    child: _FeaturedProductsSection(
+                      mode: mode,
+                      category: selectedCategory,
+                      productService: _productService,
+                    ),
+                  ),
+
+                  // ── Popular Shops Header ──
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            selectedCategory != null && selectedCategory.isNotEmpty
+                                ? 'Shops for $selectedCategory'
+                                : (mode == 'meat' ? 'Fresh Meat Outlets' : 'Popular Food Outlets'),
+                            style: AppTextStyles.sectionHeading,
+                          ),
+                          if (selectedCategory != null && selectedCategory.isNotEmpty)
+                            GestureDetector(
+                              onTap: () => appState.setSelectedCategory(null),
+                              child: Text(
+                                'Clear Filter',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // ── Popular Shops List ──
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final shop = filteredShops[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _PopularShopCard(
+                              shop: shop,
+                              selectedAddress: appState.selectedAddress,
+                              shopService: _shopService,
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ShopScreen(shop: shop),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        childCount: filteredShops.length,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
 
           // Extra bottom padding for floating nav bar
@@ -394,14 +533,13 @@ class _HomeTabState extends State<_HomeTab> {
   static const _foodHeroUrl = 'assets/images/biryani_hero.png';
   static const _meatHeroUrl = 'assets/images/meat_hero.png';
 
-
   Widget _buildHeader(BuildContext context, AppState appState) {
     final mode = appState.mode;
     final heroUrl = mode == 'meat' ? _meatHeroUrl : _foodHeroUrl;
 
     return Stack(
       children: [
-        // ── Background hero image ─────────────────────────────────────────
+        // ── Background hero image ──
         Image.asset(
           heroUrl,
           height: 280,
@@ -415,7 +553,7 @@ class _HomeTabState extends State<_HomeTab> {
           ),
         ),
 
-        // ── Warm gradient overlay (bottom-heavy for text readability) ─────
+        // ── Warm gradient overlay (bottom-heavy for text readability) ──
         Container(
           height: 280,
           decoration: BoxDecoration(
@@ -438,7 +576,7 @@ class _HomeTabState extends State<_HomeTab> {
           ),
         ),
 
-        // ── Content on top of image ───────────────────────────────────────
+        // ── Content on top of image ──
         SafeArea(
           bottom: false,
           child: Column(
@@ -451,10 +589,7 @@ class _HomeTabState extends State<_HomeTab> {
                   children: [
                     Expanded(
                       child: InkWell(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => const SelectLocationScreen()),
-                        ),
+                        onTap: _openMapPicker,
                         borderRadius: BorderRadius.circular(10),
                         child: Row(
                           children: [
@@ -464,7 +599,7 @@ class _HomeTabState extends State<_HomeTab> {
                                 color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Icon(Icons.location_on_rounded,
+                              child: const Icon(Icons.location_on_rounded,
                                   color: AppColors.white, size: 18),
                             ),
                             const SizedBox(width: 8),
@@ -473,7 +608,7 @@ class _HomeTabState extends State<_HomeTab> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Deliver to',
+                                    'Deliver to (Tap for Map)',
                                     style: AppTextStyles.caption.copyWith(
                                       color: Colors.white70,
                                       fontSize: 10,
@@ -482,7 +617,7 @@ class _HomeTabState extends State<_HomeTab> {
                                   Text(
                                     appState.selectedAddress != null
                                         ? '${appState.selectedAddress!.label} · ${appState.selectedAddress!.area}'
-                                        : 'Select delivery location',
+                                        : 'Select delivery location (Map)',
                                     style: AppTextStyles.body.copyWith(
                                       color: AppColors.white,
                                       fontWeight: FontWeight.w700,
@@ -1043,19 +1178,26 @@ class _OffersBanner extends StatelessWidget {
 }
 
 // ============================================================================
-// CATEGORY ROW
+// CATEGORY ROW WITH REAL-TIME ACTIVE SELECTION
 // ============================================================================
 
 class _CategoryRow extends StatelessWidget {
   final String mode;
   final ProductService productService;
+  final String? selectedCategory;
+  final ValueChanged<String?> onCategorySelected;
 
-  const _CategoryRow({required this.mode, required this.productService});
+  const _CategoryRow({
+    required this.mode,
+    required this.productService,
+    required this.selectedCategory,
+    required this.onCategorySelected,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 105,
+      height: 110,
       child: StreamBuilder<List<Map<String, dynamic>>>(
         stream: productService.streamCategories(mode),
         builder: (context, snapshot) {
@@ -1070,9 +1212,10 @@ class _CategoryRow extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             );
           }
 
@@ -1083,75 +1226,160 @@ class _CategoryRow extends StatelessWidget {
             );
           }
 
+          final bool isAllSelected = selectedCategory == null || selectedCategory!.isEmpty;
+
           return ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
-            itemCount: categories.length,
+            itemCount: categories.length + 1,
             separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (context, index) {
-              final cat = categories[index];
+              if (index == 0) {
+                // "ALL" Category Pill
+                return GestureDetector(
+                  onTap: () => onCategorySelected(null),
+                  child: SizedBox(
+                    width: 68,
+                    child: Column(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isAllSelected ? AppColors.primary : AppColors.surfaceVariant,
+                            border: Border.all(
+                              color: isAllSelected ? AppColors.primary : AppColors.divider,
+                              width: isAllSelected ? 2.5 : 1,
+                            ),
+                            boxShadow: isAllSelected
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(alpha: 0.35),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.grid_view_rounded,
+                              color: isAllSelected ? Colors.white : AppColors.textDark,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'All Items',
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.caption.copyWith(
+                            color: isAllSelected ? AppColors.primary : AppColors.textMedium,
+                            fontWeight: isAllSelected ? FontWeight.w800 : FontWeight.w600,
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              final cat = categories[index - 1];
               final categoryName = cat['name']?.toString() ?? '';
-              final categoryId = cat['id']?.toString() ?? '';
               final imageUrl = cat['imageUrl']?.toString() ?? '';
-              final accentColor =
-                  AppColors.categoryColor(categoryName);
+              final accentColor = AppColors.categoryColor(categoryName);
+              final isSelected = selectedCategory != null &&
+                  selectedCategory!.toLowerCase() == categoryName.toLowerCase();
 
               return GestureDetector(
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => CategoryScreen(
-                    mode: mode,
-                    categoryId: categoryId,
-                    categoryName: categoryName,
-                  ),
-                )),
+                onTap: () => onCategorySelected(categoryName),
                 child: SizedBox(
                   width: 68,
                   child: Column(
                     children: [
-                      Container(
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
                         width: 60,
                         height: 60,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
                             colors: [
-                              accentColor.withValues(alpha: 0.2),
+                              accentColor.withValues(alpha: isSelected ? 0.35 : 0.2),
                               accentColor.withValues(alpha: 0.05),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           border: Border.all(
-                            color: accentColor.withValues(alpha: 0.3),
-                            width: 1.5,
+                            color: isSelected ? AppColors.primary : accentColor.withValues(alpha: 0.4),
+                            width: isSelected ? 2.5 : 1.5,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: accentColor.withValues(alpha: 0.15),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ]
+                              : [
+                                  BoxShadow(
+                                    color: accentColor.withValues(alpha: 0.15),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                         ),
-                        child: ClipOval(
-                          child: (imageUrl.isNotEmpty && !imageUrl.contains('dxyz123abc'))
-                              ? CachedNetworkImage(
-                                  imageUrl: imageUrl,
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, __) => Container(
-                                    color: accentColor.withValues(alpha: 0.1),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            ClipOval(
+                              child: (imageUrl.isNotEmpty && !imageUrl.contains('dxyz123abc'))
+                                  ? CachedNetworkImage(
+                                      imageUrl: imageUrl,
+                                      fit: BoxFit.cover,
+                                      placeholder: (_, __) => Container(
+                                        color: accentColor.withValues(alpha: 0.1),
+                                      ),
+                                      errorWidget: (_, __, ___) => Icon(
+                                        mode == 'meat'
+                                            ? Icons.set_meal_rounded
+                                            : Icons.restaurant_rounded,
+                                        color: accentColor,
+                                        size: 26,
+                                      ),
+                                    )
+                                  : Icon(
+                                      mode == 'meat'
+                                          ? Icons.set_meal_rounded
+                                          : Icons.restaurant_rounded,
+                                      color: accentColor,
+                                      size: 26,
+                                    ),
+                            ),
+                            if (isSelected)
+                              Positioned(
+                                top: 2,
+                                right: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
                                   ),
-                                  errorWidget: (_, __, ___) => Icon(
-                                    Icons.restaurant_rounded,
-                                    color: accentColor,
-                                    size: 26,
+                                  child: const Icon(
+                                    Icons.check_rounded,
+                                    size: 11,
+                                    color: Colors.white,
                                   ),
-                                )
-                              : Icon(
-                                  Icons.restaurant_rounded,
-                                  color: accentColor,
-                                  size: 26,
                                 ),
+                              ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -1161,9 +1389,9 @@ class _CategoryRow extends StatelessWidget {
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textMedium,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 10,
+                          color: isSelected ? AppColors.primary : AppColors.textMedium,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          fontSize: 10.5,
                         ),
                       ),
                     ],
@@ -1179,6 +1407,393 @@ class _CategoryRow extends StatelessWidget {
 }
 
 // ============================================================================
+// FEATURED CATEGORY PRODUCTS SHOWCASE
+// ============================================================================
+
+class _FeaturedProductsSection extends StatelessWidget {
+  final String mode;
+  final String? category;
+  final ProductService productService;
+
+  const _FeaturedProductsSection({
+    required this.mode,
+    required this.category,
+    required this.productService,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<ProductModel>>(
+      stream: productService.streamProducts(
+        mode: mode,
+        category: category,
+        limit: 10,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final products = snapshot.data!;
+        final headerTitle = category != null && category!.isNotEmpty
+            ? 'Popular $category'
+            : (mode == 'meat' ? 'Fresh Meat & Cuts' : 'Popular Dishes');
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(headerTitle, style: AppTextStyles.sectionHeading),
+                  Text(
+                    '${products.length} items',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 220,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                itemCount: products.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final p = products[index];
+                  return _HomeProductMiniCard(product: p, mode: mode);
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _HomeProductMiniCard extends StatelessWidget {
+  final ProductModel product;
+  final String mode;
+
+  const _HomeProductMiniCard({
+    required this.product,
+    required this.mode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cartService = context.watch<CartService>();
+    final inCart = cartService.items.any((i) => i.productId == product.id);
+
+    return Container(
+      width: 155,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+            child: SizedBox(
+              height: 105,
+              width: double.infinity,
+              child: (product.imageUrl.isNotEmpty && !product.imageUrl.contains('dxyz123abc'))
+                  ? CachedNetworkImage(
+                      imageUrl: product.imageUrl,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Container(
+                        color: AppColors.surfaceVariant,
+                        child: Icon(
+                          mode == 'meat' ? Icons.set_meal_rounded : Icons.fastfood_rounded,
+                          color: AppColors.primary,
+                          size: 32,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      color: AppColors.surfaceVariant,
+                      child: Icon(
+                        mode == 'meat' ? Icons.set_meal_rounded : Icons.fastfood_rounded,
+                        color: AppColors.primary,
+                        size: 32,
+                      ),
+                    ),
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  product.category,
+                  maxLines: 1,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '₹${product.price.toStringAsFixed(0)}',
+                      style: AppTextStyles.price.copyWith(fontSize: 14),
+                    ),
+                    SizedBox(
+                      height: 28,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          cartService.addItem(CartItemModel.fromProduct(product));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Added ${product.name} to cart!'),
+                              backgroundColor: AppColors.success,
+                              duration: const Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: inCart ? AppColors.success : AppColors.primary,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          inCart ? 'ADDED' : 'ADD',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// DEDICATED DELIVERY NOT AVAILABLE SCREEN VIEW
+// ============================================================================
+
+class _DeliveryNotAvailableView extends StatelessWidget {
+  final AddressModel? selectedAddress;
+  final VoidCallback onChangeLocation;
+  final VoidCallback onUseGps;
+  final ValueChanged<Map<String, dynamic>> onSelectHub;
+
+  const _DeliveryNotAvailableView({
+    required this.selectedAddress,
+    required this.onChangeLocation,
+    required this.onUseGps,
+    required this.onSelectHub,
+  });
+
+  static const List<Map<String, dynamic>> _activeHubs = [
+    {'name': 'Malur', 'lat': 13.0038, 'lng': 77.9407, 'taluk': 'Malur'},
+    {'name': 'KGF / Robertsonpet', 'lat': 12.9592, 'lng': 78.2720, 'taluk': 'Kolar Gold Fields'},
+    {'name': 'Bangarapet', 'lat': 12.9818, 'lng': 78.2045, 'taluk': 'Bangarapet'},
+    {'name': 'Kolar', 'lat': 13.1367, 'lng': 78.1292, 'taluk': 'Kolar'},
+    {'name': 'Bangalore', 'lat': 12.9716, 'lng': 77.5946, 'taluk': 'Bangalore Urban'},
+    {'name': 'Chennai', 'lat': 13.0827, 'lng': 80.2707, 'taluk': 'Chennai'},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final locationName = selectedAddress?.area ?? selectedAddress?.city ?? 'this location';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.divider),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Icon Badge
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.location_off_rounded,
+                size: 52,
+                color: AppColors.error,
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            // Title
+            Text(
+              'Delivery is Not Available in $locationName',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.heading.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Subtitle
+            Text(
+              'We are expanding quickly! Currently, partner shops are delivering to active hubs in Malur, KGF, Bangarapet, Bangalore, and Chennai.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.supporting.copyWith(
+                fontSize: 13,
+                height: 1.4,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Select Location Button
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: onChangeLocation,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.map_rounded, size: 20, color: Colors.white),
+                label: const Text(
+                  'Select Another Location on Map',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Use GPS Location Button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: onUseGps,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.my_location_rounded, size: 18, color: AppColors.primary),
+                label: Text(
+                  'Use Current GPS Location',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Quick Hub Selectors
+            Divider(color: AppColors.divider),
+            const SizedBox(height: 12),
+            Text(
+              'Or explore live menus in active Dabzo service hubs:',
+              style: AppTextStyles.caption.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 11.5,
+                color: AppColors.textMedium,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: _activeHubs.map((hub) {
+                return ActionChip(
+                  label: Text(hub['name'] as String),
+                  avatar: const Icon(Icons.near_me_rounded, size: 14, color: AppColors.primary),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
+                  labelStyle: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
+                  onPressed: () => onSelectHub(hub),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
 // POPULAR SHOP CARD
 // ============================================================================
 
@@ -1187,7 +1802,7 @@ class _CategoryRow extends StatelessWidget {
 /// address is selected), and an offer badge if the shop has one.
 class _PopularShopCard extends StatelessWidget {
   final Map<String, dynamic> shop;
-  final dynamic selectedAddress; // AddressModel? — kept dynamic to avoid a new import cycle here
+  final AddressModel? selectedAddress;
   final ShopService shopService;
   final VoidCallback onTap;
 
@@ -1216,14 +1831,11 @@ class _PopularShopCard extends StatelessWidget {
     String? distanceLabel;
     final shopLat = (shop['latitude'] as num?)?.toDouble();
     final shopLng = (shop['longitude'] as num?)?.toDouble();
-    if (shopLat != null &&
-        shopLng != null &&
-        selectedAddress != null &&
-        selectedAddress.latitude != null &&
-        selectedAddress.longitude != null) {
+    final addr = selectedAddress;
+    if (shopLat != null && shopLng != null && addr != null) {
       final km = shopService.distanceInKm(
-        selectedAddress.latitude,
-        selectedAddress.longitude,
+        addr.latitude,
+        addr.longitude,
         shopLat,
         shopLng,
       );

@@ -13,7 +13,6 @@ import '../../services/order_service.dart';
 import '../../state/app_state.dart';
 import '../home/home_screen.dart';
 import 'order_tracking_screen.dart';
-import '../home/home_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   final bool embedded;

@@ -9,7 +9,7 @@ import '../../models/address_model.dart';
 import '../../services/address_service.dart';
 import '../../services/location_service.dart';
 import '../../state/app_state.dart';
-import 'check_radius_screen.dart';
+import 'map_location_picker_screen.dart';
 
 class SelectLocationScreen extends StatefulWidget {
   const SelectLocationScreen({super.key});
@@ -157,6 +157,78 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
                   children: [
+                    // ── Map Location Picker Button Card ──
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () async {
+                            final selected = await Navigator.of(context).push<AddressModel?>(
+                              MaterialPageRoute(builder: (_) => const MapLocationPickerScreen()),
+                            );
+                            if (!context.mounted) return;
+                            if (selected != null) {
+                              Navigator.of(context).pop();
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(18),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.map_rounded,
+                                      color: Colors.white, size: 22),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Select Location on Map',
+                                        style: AppTextStyles.body.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14.5,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Move pin to pinpoint delivery location in Bangalore, Chennai, KGF, Malur...',
+                                        style: AppTextStyles.caption.copyWith(fontSize: 11.5),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right_rounded,
+                                    color: AppColors.primary, size: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
                     // ── GPS Auto-Detect Button Card ──
                     Container(
                       decoration: BoxDecoration(
@@ -237,11 +309,11 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                       height: 50,
                       child: OutlinedButton.icon(
                         onPressed: () async {
-                          final saved = await Navigator.of(context).push<bool>(
-                            MaterialPageRoute(builder: (_) => const CheckRadiusScreen()),
+                          final selected = await Navigator.of(context).push<AddressModel?>(
+                            MaterialPageRoute(builder: (_) => const MapLocationPickerScreen()),
                           );
                           if (!context.mounted) return;
-                          if (saved == true) {
+                          if (selected != null) {
                             Navigator.of(context).pop();
                           }
                         },

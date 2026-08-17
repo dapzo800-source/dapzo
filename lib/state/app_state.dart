@@ -30,6 +30,8 @@ class AppState extends ChangeNotifier {
   bool _isRating4Plus = false;
   bool _isNearAndFast = false;
 
+  String? _selectedCategory;
+
   // ============================================================
   // GETTERS
   // ============================================================
@@ -37,6 +39,8 @@ class AppState extends ChangeNotifier {
   UserModel? get user => _user;
 
   String get mode => _mode;
+
+  String? get selectedCategory => _selectedCategory;
 
   AddressModel? get selectedAddress => _selectedAddress;
 
@@ -75,6 +79,7 @@ class AppState extends ChangeNotifier {
     }
 
     _mode = mode;
+    _selectedCategory = null; // reset category on mode change for immediate fresh listings
 
     // Reset food-mode filters when switching to meat
     if (mode == 'meat') {
@@ -84,6 +89,19 @@ class AppState extends ChangeNotifier {
       _isNearAndFast = false;
     }
 
+    notifyListeners();
+  }
+
+  // ============================================================
+  // CATEGORY
+  // ============================================================
+
+  void setSelectedCategory(String? category) {
+    if (_selectedCategory == category) {
+      _selectedCategory = null; // toggle off if already selected
+    } else {
+      _selectedCategory = category;
+    }
     notifyListeners();
   }
 

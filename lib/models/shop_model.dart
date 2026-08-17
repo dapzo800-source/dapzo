@@ -8,6 +8,7 @@ class ShopModel {
   final double longitude;
   final double deliveryRadiusKm;
   final bool isActive;
+  final String status; // "approved" | "pending" | "rejected"
 
   ShopModel({
     required this.id,
@@ -17,6 +18,7 @@ class ShopModel {
     required this.longitude,
     required this.deliveryRadiusKm,
     this.isActive = true,
+    this.status = 'approved',
   });
 
   factory ShopModel.fromFirestore(DocumentSnapshot doc) {
@@ -29,6 +31,7 @@ class ShopModel {
       longitude: (data['longitude'] ?? 0).toDouble(),
       deliveryRadiusKm: (data['deliveryRadiusKm'] ?? 5).toDouble(),
       isActive: data['isActive'] ?? true,
+      status: (data['status'] ?? 'approved').toString(),
     );
   }
 }
